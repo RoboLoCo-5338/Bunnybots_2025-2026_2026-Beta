@@ -1,0 +1,40 @@
+name: VMFortress Review
+on:
+    pull_request_review:
+        types: 
+            - submitted
+            - dismissed
+        
+jobs:
+    checkReviews:
+        name: Check if VMFortress is an Accepting Reviewer
+        runs-on: ubuntu-latest
+        if: ${{github.event.pull_request.base.ref}} == 'main' && needs.checkAuthor.conclusion != 'success'
+        steps:
+            - name: Check if VMFortress is the Author
+              id: checkAuthor
+              continue-on-error: true
+              run: |
+                if [ "${{ github.event.pull_request.user.login }}" != "VMFortress" ]; then
+                    echo "VMFortress is not the author of the PR"
+                    exit 1
+                fi
+            - name: Install JQ
+              if: ${{ steps.checkAuthor.outcome == 'failure' }}
+              run: sudo apt-get install jq
+            - name: Check if VMFortress Reviewed and Accepted
+              if: ${{ steps.checkAuthor.outcome == 'failure' }}
+              id: checkVMFortressReviewed
+              run: |
+                reviews=$(curl -L \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: Bearer ${{secrets.PR_TOKEN}}" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                https://api.github.com/repos/${{github.repository}}/pulls/${{github.event.pull_request.number}}/reviews)
+                reviewJson=$(echo "$reviews" | jq '.[]' | jq 'select(.user.login == "VMFortress" and .state=="APPROVED")')
+                if [[ -z "$reviewJson" ]]; then
+                    echo VMFortress has not approved the PR
+                    exit 1
+                else
+                    echo VMFortress has approved the PR
+                fi
