@@ -29,6 +29,7 @@ public class IndexerIOTalonFX extends IndexerIO {
   private final StatusSignal<Voltage> indexerAppliedVolts;
   private final StatusSignal<Current> indexerCurrent;
   private final StatusSignal<Temperature> indexerTemperature;
+  @SuppressWarnings("unused")
   private final StatusSignal<Integer> indexerVersion;
   private final StatusSignal<Angle> indexerPosition;
 
