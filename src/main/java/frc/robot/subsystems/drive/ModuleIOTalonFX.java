@@ -73,9 +73,9 @@ public abstract class ModuleIOTalonFX extends ModuleIO {
     this.constants = constants;
     this.drivePIDTunableNumbers = drivePIDTunableNumbers;
 
-    driveTalon = new TalonFX(constants.DriveMotorId, TunerConstants.DrivetrainConstants.CANBusName);
-    turnTalon = new TalonFX(constants.SteerMotorId, TunerConstants.DrivetrainConstants.CANBusName);
-    cancoder = new CANcoder(constants.EncoderId, TunerConstants.DrivetrainConstants.CANBusName);
+    driveTalon = new TalonFX(constants.DriveMotorId, TunerConstants.kCANBus.getName());
+    turnTalon = new TalonFX(constants.SteerMotorId, TunerConstants.kCANBus.getName());
+    cancoder = new CANcoder(constants.EncoderId, TunerConstants.kCANBus.getName());
 
     // Configure drive motor
     var driveConfig = getDriveConfiguration(constants);

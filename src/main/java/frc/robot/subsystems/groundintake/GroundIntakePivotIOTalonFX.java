@@ -38,7 +38,7 @@ private final StatusSignal<Integer> groundIntakePivotVersion;
   public final TalonFX groundIntakePivotMotor =
       new TalonFX(
           GroundIntakeConstants.GroundIntakePivotConstants.GROUNDINTAKE_PIVOT_MOTOR_ID,
-          TunerConstants.DrivetrainConstants.CANBusName);
+          TunerConstants.kCANBus.getName());
   final VelocityVoltage groundIntakePivotVelocityRequest = new VelocityVoltage(0.0);
   final PositionVoltage groundIntakePivotPositionRequest = new PositionVoltage(0.0);
   final VoltageOut groundIntakePivotOpenLoop = new VoltageOut(0.0);
