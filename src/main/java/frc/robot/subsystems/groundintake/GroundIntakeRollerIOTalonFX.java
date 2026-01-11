@@ -28,10 +28,7 @@ public class GroundIntakeRollerIOTalonFX extends GroundIntakeRollerIO {
   private final StatusSignal<Voltage> groundIntakeRollerAppliedVolts;
   private final StatusSignal<Current> groundIntakeRollerCurrent;
   private final StatusSignal<Temperature> groundIntakeRollerTemperature;
-
-  @SuppressWarnings("unused")
   private final StatusSignal<Integer> groundIntakeRollerVersion;
-
   private final StatusSignal<Angle> groundIntakeRollerPosition;
 
   private final Debouncer groundIntakeRollerDebouncer = new Debouncer(0.5);

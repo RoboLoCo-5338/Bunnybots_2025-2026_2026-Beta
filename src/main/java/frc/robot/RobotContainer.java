@@ -440,7 +440,8 @@ public class RobotContainer {
     SimulatedArena.getInstance().simulationPeriodic();
     Logger.recordOutput(
         "FieldSimulation/RobotPosition", driveSimulation.getSimulatedDriveTrainPose());
-    Logger.recordOutput(
-        "FieldSimulation/Lunites", SimulatedArena.getInstance().getGamePiecesArrayByType("Lunite"));
+    // Logger.recordOutput(
+    // "FieldSimulation/Lunites",
+    // SimulatedArena.getInstance().getGamePiecesArrayByType("Lunite"));
   }
 }

@@ -34,10 +34,7 @@ public class GroundIntakePivotIOTalonFX extends GroundIntakePivotIO {
   private final StatusSignal<Voltage> groundIntakePivotAppliedVolts;
   private final StatusSignal<Current> groundIntakePivotCurrent;
   private final StatusSignal<Temperature> groundIntakePivotTemperature;
-
-  @SuppressWarnings("unused")
   private final StatusSignal<Integer> groundIntakePivotVersion;
-
   private final Debouncer groundIntakePivotDebouncer = new Debouncer(0.5);
   protected final REVThroughBoreEncoder groundIntakePivotEncoder;
 
