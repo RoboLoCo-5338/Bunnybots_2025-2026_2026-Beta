@@ -28,9 +28,8 @@ import org.ironmaple.simulation.drivesims.SwerveModuleSimulation;
 public class ModuleIOTalonFXSim extends ModuleIOTalonFX {
   private final SwerveModuleSimulation simulation;
 
-  @SuppressWarnings("unchecked")
   public ModuleIOTalonFXSim(
-      @SuppressWarnings("rawtypes") SwerveModuleConstants constants,
+      SwerveModuleConstants constants,
       DrivePIDTunableNumbers drivePIDTunableNumbers,
       SwerveModuleSimulation simulation) {
     super(PhoenixUtil.regulateModuleConstantForSimulation(constants), drivePIDTunableNumbers);

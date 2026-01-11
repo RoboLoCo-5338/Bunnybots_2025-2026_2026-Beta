@@ -1,4 +1,4 @@
-package frc.robot.sim;
+package frc.robot.sim.maplesim;
 
 import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.Inches;
@@ -14,8 +14,8 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.LinearVelocity;
-import frc.robot.sim.BunnybotsCosmicConverter.ConverterPosition;
-import frc.robot.sim.BunnybotsStarSpire.SpirePosition;
+import frc.robot.sim.maplesim.BunnybotsCosmicConverter.ConverterPosition;
+import frc.robot.sim.maplesim.BunnybotsStarSpire.SpirePosition;
 import frc.robot.util.PoseUtils;
 import org.ironmaple.simulation.SimulatedArena;
 import org.ironmaple.simulation.gamepieces.GamePieceOnFieldSimulation;

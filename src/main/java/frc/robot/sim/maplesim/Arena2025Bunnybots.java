@@ -1,4 +1,4 @@
-package frc.robot.sim;
+package frc.robot.sim.maplesim;
 
 import static edu.wpi.first.units.Units.Meters;
 
@@ -7,10 +7,10 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import frc.robot.Constants;
-import frc.robot.sim.BunnybotsCosmicConverter.ShieldGenerator;
-import frc.robot.sim.BunnybotsCosmicConverter.SolarCore;
-import frc.robot.sim.BunnybotsStarSpire.HumanBehavior;
-import frc.robot.sim.BunnybotsStarSpire.SpirePosition;
+import frc.robot.sim.maplesim.BunnybotsCosmicConverter.ShieldGenerator;
+import frc.robot.sim.maplesim.BunnybotsCosmicConverter.SolarCore;
+import frc.robot.sim.maplesim.BunnybotsStarSpire.HumanBehavior;
+import frc.robot.sim.maplesim.BunnybotsStarSpire.SpirePosition;
 import frc.robot.util.PoseUtils;
 import java.util.Arrays;
 import org.ironmaple.simulation.SimulatedArena;

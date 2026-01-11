@@ -1,6 +1,7 @@
 package frc.robot.subsystems.indexer;
 
 import static edu.wpi.first.units.Units.KilogramSquareMeters;
+import static frc.robot.subsystems.indexer.IndexerConstants.IndexerSimConstants;
 
 import com.ctre.phoenix6.sim.TalonFXSimState;
 import edu.wpi.first.math.system.plant.DCMotor;
@@ -17,7 +18,7 @@ public class IndexerIOSim extends IndexerIOTalonFX {
       new FlywheelSim(
           LinearSystemId.createFlywheelSystem(
               DCMotor.getKrakenX60(1),
-              IndexerSimConstants.MOI.in(KilogramSquareMeters),
+              IndexerConstants.MOI.in(KilogramSquareMeters),
               IndexerConstants.IndexerSimConstants.GEARING),
           DCMotor.getKrakenX60(1));
 

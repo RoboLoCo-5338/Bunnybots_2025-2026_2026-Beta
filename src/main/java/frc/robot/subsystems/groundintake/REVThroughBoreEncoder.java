@@ -4,7 +4,7 @@ import edu.wpi.first.wpilibj.DutyCycleEncoder;
 
 public class REVThroughBoreEncoder extends DutyCycleEncoder {
   public REVThroughBoreEncoder(int channel) {
-    super(channel);
+    super(channel, 1, 0.988);
 
     // Based on logging:
     // - Initializing: 764 ± 5

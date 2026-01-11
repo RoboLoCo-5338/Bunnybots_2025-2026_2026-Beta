@@ -29,10 +29,7 @@ public class IndexerIOTalonFX extends IndexerIO {
   private final StatusSignal<Voltage> indexerAppliedVolts;
   private final StatusSignal<Current> indexerCurrent;
   private final StatusSignal<Temperature> indexerTemperature;
-
-  @SuppressWarnings("unused")
   private final StatusSignal<Integer> indexerVersion;
-
   private final StatusSignal<Angle> indexerPosition;
 
   private final Debouncer indexerDebouncer = new Debouncer(0.5);
@@ -45,17 +42,17 @@ public class IndexerIOTalonFX extends IndexerIO {
   final VoltageOut indexerOpenLoop = new VoltageOut(0.0);
 
   private final LoggedTunableNumber kP =
-      new LoggedTunableNumber("Indexer kP", IndexerConstants.INDEXER_KP);
+      new LoggedTunableNumber("Indexer/kP", IndexerConstants.INDEXER_KP);
   private final LoggedTunableNumber kI =
-      new LoggedTunableNumber("Indexer kI", IndexerConstants.INDEXER_KI);
+      new LoggedTunableNumber("Indexer/kI", IndexerConstants.INDEXER_KI);
   private final LoggedTunableNumber kD =
-      new LoggedTunableNumber("Indexer kD", IndexerConstants.INDEXER_KD);
+      new LoggedTunableNumber("Indexer/kD", IndexerConstants.INDEXER_KD);
   private final LoggedTunableNumber kV =
-      new LoggedTunableNumber("Indexer kV", IndexerConstants.INDEXER_KV);
+      new LoggedTunableNumber("Indexer/kV", IndexerConstants.INDEXER_KV);
   private final LoggedTunableNumber kS =
-      new LoggedTunableNumber("Indexer kS", IndexerConstants.INDEXER_KS);
+      new LoggedTunableNumber("Indexer/kS", IndexerConstants.INDEXER_KS);
   private final LoggedTunableNumber kA =
-      new LoggedTunableNumber("Indexer kA", IndexerConstants.INDEXER_KA);
+      new LoggedTunableNumber("Indexer/kA", IndexerConstants.INDEXER_KA);
 
   public IndexerIOTalonFX() {
     indexerVelocity = indexerMotor.getVelocity();

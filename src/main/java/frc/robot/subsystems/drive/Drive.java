@@ -43,7 +43,6 @@ import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -102,7 +101,7 @@ public class Drive extends SubsystemBase
           .withGyro(COTS.ofPigeon2())
           .withSwerveModule(
               new SwerveModuleSimulationConfig(
-                  DCMotor.getKrakenX60(1),
+                  DCMotor.getFalcon500(1),
                   DCMotor.getFalcon500(1),
                   TunerConstants.FrontLeft.DriveMotorGearRatio,
                   TunerConstants.FrontLeft.SteerMotorGearRatio,
@@ -184,7 +183,7 @@ public class Drive extends SubsystemBase
         new PPHolonomicDriveController(
             new PIDConstants(5.0, 0.0, 0.0), new PIDConstants(5.0, 0.0, 0.0)),
         PP_CONFIG,
-        () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,
+        (() -> false),
         this);
     Pathfinding.setPathfinder(new LocalADStarAK());
     PathPlannerLogging.setLogActivePathCallback(
@@ -465,6 +464,10 @@ public class Drive extends SubsystemBase
   @Override
   public Command reset(Direction direction) {
     return run(() -> runCharacterization(0.0));
+  }
+
+  public Command resetGyro() {
+    return runOnce(() -> gyroIO.resetRotation());
   }
 
   public static record DrivePIDTunableNumbers(
