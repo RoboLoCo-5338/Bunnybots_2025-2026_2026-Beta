@@ -47,11 +47,14 @@ import frc.robot.subsystems.shooter.ShooterConstants;
 import frc.robot.subsystems.shooter.ShooterIO;
 import frc.robot.subsystems.shooter.ShooterIOSim;
 import frc.robot.subsystems.shooter.ShooterIOSpark;
-import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionConstants;
-import frc.robot.subsystems.vision.VisionIO;
-import frc.robot.subsystems.vision.VisionIOPhotonVision;
-import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
+import frc.robot.subsystems.vision.gamepiecedetection.GamePieceDetection;
+import frc.robot.subsystems.vision.gamepiecedetection.GamePieceDetectionIO;
+import frc.robot.subsystems.vision.gamepiecedetection.GamePieceObjectDetectionIOPhotonVision;
+import frc.robot.subsystems.vision.odometry.VisionOdometry;
+import frc.robot.subsystems.vision.odometry.VisionOdometryIO;
+import frc.robot.subsystems.vision.odometry.VisionOdometryIOPhotonVision;
+import frc.robot.subsystems.vision.odometry.VisionOdometryIOPhotonVisionSim;
 import org.ironmaple.simulation.SimulatedArena;
 import org.ironmaple.simulation.drivesims.SwerveDriveSimulation;
 import org.littletonrobotics.junction.Logger;
@@ -69,7 +72,9 @@ public class RobotContainer {
   private SwerveDriveSimulation driveSimulation = null;
 
   @SuppressWarnings("unused")
-  private final Vision vision;
+  private final VisionOdometry vision;
+
+  private final GamePieceDetection gamePieceDetector;
 
   private final GroundIntake groundIntake;
   private final Indexer indexer;
@@ -96,10 +101,18 @@ public class RobotContainer {
                 new ModuleIOTalonFXReal(TunerConstants.BackRight, Drive.TUNABLE_PID_VALUES),
                 (pose) -> {});
         vision =
-            new Vision(
+            new VisionOdometry(
                 drive,
-                new VisionIOPhotonVision(
-                    VisionConstants.camera0Name, VisionConstants.robotToCamera0));
+                new VisionOdometryIOPhotonVision(
+                    VisionConstants.poseCamera1Name, VisionConstants.robotToCamera1));
+
+        gamePieceDetector =
+            new GamePieceDetection(
+                new GamePieceObjectDetectionIOPhotonVision(
+                    VisionConstants.objCamera0Name,
+                    () -> drive.getPose(),
+                    VisionConstants.robotToCamera1));
+
         groundIntake =
             new GroundIntake(new GroundIntakeRollerIOTalonFX(), new GroundIntakePivotIOTalonFX());
         indexer = new Indexer(new IndexerIOTalonFX());
@@ -134,12 +147,15 @@ public class RobotContainer {
                     driveSimulation.getModules()[3]),
                 driveSimulation::setSimulationWorldPose);
         vision =
-            new Vision(
+            new VisionOdometry(
                 drive,
-                new VisionIOPhotonVisionSim(
-                    VisionConstants.camera0Name,
+                new VisionOdometryIOPhotonVisionSim(
+                    VisionConstants.poseCamera1Name,
                     VisionConstants.robotToCamera0,
                     driveSimulation::getSimulatedDriveTrainPose));
+
+        gamePieceDetector = new GamePieceDetection(new GamePieceDetectionIO());
+
         groundIntake =
             new GroundIntake(new GroundIntakeRollerIOSim(), new GroundIntakePivotIOSim());
         indexer = new Indexer(new IndexerIOSim());
@@ -156,7 +172,8 @@ public class RobotContainer {
                 new ModuleIO(),
                 new ModuleIO(),
                 (pose) -> {});
-        vision = new Vision(drive, new VisionIO() {});
+        vision = new VisionOdometry(drive, new VisionOdometryIO() {});
+        gamePieceDetector = new GamePieceDetection(new GamePieceDetectionIO());
         groundIntake =
             new GroundIntake(new GroundIntakeRollerIOTalonFX(), new GroundIntakePivotIOTalonFX());
         indexer = new Indexer(new IndexerIOTalonFX());

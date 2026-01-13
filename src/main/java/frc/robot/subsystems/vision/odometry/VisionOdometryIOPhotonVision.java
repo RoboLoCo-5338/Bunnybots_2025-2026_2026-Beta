@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 
-package frc.robot.subsystems.vision;
+package frc.robot.subsystems.vision.odometry;
 
 import static frc.robot.subsystems.vision.VisionConstants.*;
 
@@ -27,7 +27,7 @@ import java.util.Set;
 import org.photonvision.PhotonCamera;
 
 /** IO implementation for real PhotonVision hardware. */
-public class VisionIOPhotonVision extends VisionIO {
+public class VisionOdometryIOPhotonVision extends VisionOdometryIO {
   protected final PhotonCamera camera;
   protected final Transform3d robotToCamera;
 
@@ -37,7 +37,7 @@ public class VisionIOPhotonVision extends VisionIO {
    * @param name The configured name of the camera.
    * @param rotationSupplier The 3D position of the camera relative to the robot.
    */
-  public VisionIOPhotonVision(String name, Transform3d robotToCamera) {
+  public VisionOdometryIOPhotonVision(String name, Transform3d robotToCamera) {
     camera = new PhotonCamera(name);
     this.robotToCamera = robotToCamera;
   }
