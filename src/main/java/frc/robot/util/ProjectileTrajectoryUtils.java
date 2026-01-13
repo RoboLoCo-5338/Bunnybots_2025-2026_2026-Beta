@@ -13,28 +13,66 @@ public class ProjectileTrajectoryUtils {
   private static final LinearAcceleration GRAVITY = MetersPerSecondPerSecond.of(9.81);
 
   /**
-   * Calculates the percentage of speed transferred from the shooter wheel to the projectile
+   * Calculates the Robot heading azimuth
    *
-   * @param totalMOI Total moment of inertia of flywheel and shooter wheel, equal to the sum of both
-   *     individual MOIs
-   * @param projectileWeight Weight of the projectile being shot
-   * @param shooterWheelRadius Radius of the shooter wheel
-   * @return Percentage of speed transferred from shooter wheel to projectile (0-1)
-   * @see <a href="https://www.reca.lc/flywheel">Flywheel projectile calculation source</a>
+   * @param botVelocityX X-velocity of the Robot, FOC, in meters
+   * @param botVelocityY Y-velocity of the Robot, FOC, in meters
+   * @param timeOfFlight duration of the delta-t from launch to target
+   * @param shooterVelocity exit velocity from the shooter
+   * @param targetPos 3d displacement of the target, FOC, in meters
+   * @param shooterAltitude Angle of the fixed shooter from horizontal
+   * @return Time of flight for the projectile from launch to target
    */
-  //   public static double calcSpeedTransferPercentage(
-  //       MomentOfInertia totalMOI, Mass projectileWeight, Distance shooterWheelRadius) {
-  //     return SPEED_TRANSFER_PERCENTAGE_CONSTANTS[0]
-  //         * totalMOI.in(KilogramSquareMeters)
-  //         / (SPEED_TRANSFER_PERCENTAGE_CONSTANTS[1]
-  //                 * projectileWeight.in(Kilograms)
-  //                 * (shooterWheelRadius.in(Meters) * shooterWheelRadius.in(Meters))
-  //             + SPEED_TRANSFER_PERCENTAGE_CONSTANTS[2] * totalMOI.in(KilogramSquareMeters));
-  //   }
+  public static Angle calcRobotHeadingAzimuth(
+      LinearVelocity botVelocityX,
+      LinearVelocity botVelocityY,
+      Time timeOfFlight,
+      LinearVelocity shooterVelocity,
+      Translation3d targetPos,
+      Angle shooterAltitude) {
+    double g = GRAVITY.in(MetersPerSecondPerSecond);
+    double sinTheta =
+        targetPos.getY() - timeOfFlight.in(Seconds) * botVelocityY.in(MetersPerSecond);
+    double cosTheta =
+        targetPos.getX() - timeOfFlight.in(Seconds) * botVelocityX.in(MetersPerSecond);
+    Logger.recordOutput("Trajectory/AzimuthSolution/sinTheta", sinTheta);
+    Logger.recordOutput("Trajectory/AzimuthSolution/cosTheta", cosTheta);
+    return Radians.of(Math.atan2(sinTheta, cosTheta));
+  }
+
+  /**
+   * Calculates the Shooter exit velocity for the projectile
+   *
+   * @param timeOfFlight duration of the delta-t from launch to target
+   * @param targetPos 3d displacement of the target, FOC, in meters
+   * @param shooterAltitude Angle of the fixed shooter from horizontal
+   * @return Time of flight for the projectile from launch to target
+   */
+  public static LinearVelocity calcShooterVelocity(
+      Time timeOfFlight, Translation3d targetPos, Angle shooterAltitude) {
+    double g = GRAVITY.in(MetersPerSecondPerSecond);
+    double numerator = targetPos.getZ() + 0.5 * g * Math.pow(timeOfFlight.in(Seconds), 2.0);
+    // Distance numerator =
+    // Meters.of(targetPos.getZ()).plus(GRAVITY.times(timeOfFlight.times(timeOfFlight).times(0.5)));
+    double denominator = timeOfFlight.in(Seconds) * Math.sin(shooterAltitude.in(Radians));
+    Logger.recordOutput("Trajectory/VelocitySolution/numerator", numerator);
+    Logger.recordOutput("Trajectory/VelocitySolution/denominator", denominator);
+    return MetersPerSecond.of(numerator / denominator);
+  }
+
+  /**
+   * Calculates the Time of flight for the projectile from launch to target
+   *
+   * @param botVelocityX X-velocity of the Robot, FOC, in meters
+   * @param botVelocityY Y-velocity of the Robot, FOC, in meters
+   * @param targetPos 3d displacement of the target, FOC, in meters
+   * @param shooterAltitude Angle of the fixed shooter from horizontal
+   * @return Time of flight for the projectile from launch to target
+   */
   public static Time calcTargetTime(
       LinearVelocity botVelocityX,
       LinearVelocity botVelocityY,
-      Translation3d targetPose,
+      Translation3d targetPos,
       Angle shooterAltitude) {
     double g = GRAVITY.in(MetersPerSecondPerSecond);
     double cos2a = Math.pow(Math.cos(shooterAltitude.in(Radians)), 2);
@@ -42,20 +80,21 @@ public class ProjectileTrajectoryUtils {
     double v_x = botVelocityX.in(MetersPerSecond);
     double v_y = botVelocityY.in(MetersPerSecond);
     double a = 0.25 * Math.pow(g, 2) * cos2a;
-    double b =
-        GRAVITY.in(MetersPerSecondPerSecond) * targetPose.getZ() * cos2a
-            - v_x * v_x * sin2a
-            - v_y * v_y * sin2a;
-    double c = 2.0 * (targetPose.getX() * v_x + targetPose.getY() * v_y) * sin2a;
+    double b = g * targetPos.getZ() * cos2a - v_x * v_x * sin2a - v_y * v_y * sin2a;
+    double c = 2.0 * (targetPos.getX() * v_x + targetPos.getY() * v_y) * sin2a;
     double d =
-        Math.pow(targetPose.getZ(), 2) * cos2a
-            - Math.pow(targetPose.getX(), 2) * sin2a
-            - Math.pow(targetPose.getY(), 2) * sin2a;
-    Logger.recordOutput("QuarticSolution/a", a);
-    Logger.recordOutput("QuarticSolution/b", b);
-    Logger.recordOutput("QuarticSolution/c", c);
-    Logger.recordOutput("QuarticSolution/d", d);
-    return Time.ofBaseUnits(solveDepressedQuarticRealHigh(a, b, c, d), Seconds);
+        Math.pow(targetPos.getZ(), 2) * cos2a
+            - Math.pow(targetPos.getX(), 2) * sin2a
+            - Math.pow(targetPos.getY(), 2) * sin2a;
+    Logger.recordOutput("Trajectory/QuarticSolution/a", a);
+    Logger.recordOutput("Trajectory/QuarticSolution/b", b);
+    Logger.recordOutput("Trajectory/QuarticSolution/c", c);
+    Logger.recordOutput("Trajectory/QuarticSolution/d", d);
+    if (c == 0) {
+      return Time.ofBaseUnits(Math.sqrt(solveQuadraticRealHigh(a, b, d)), Seconds);
+    } else {
+      return Time.ofBaseUnits(solveDepressedQuarticRealHigh(a, b, c, d), Seconds);
+    }
   }
 
   public static double solveQuartic(double a, double b, double c, double d, double e) {
