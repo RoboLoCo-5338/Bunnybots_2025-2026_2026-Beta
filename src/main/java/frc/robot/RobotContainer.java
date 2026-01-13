@@ -13,18 +13,27 @@
 
 package frc.robot;
 
+import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.RPM;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
+import static edu.wpi.first.units.Units.Volts;
 
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
+import edu.wpi.first.wpilibj2.command.WaitUntilCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
-import frc.robot.sim.Arena2025Bunnybots;
-import frc.robot.sim.BunnybotsStarSpire.HumanBehavior;
+import frc.robot.sim.MechanismPoseLogger;
 import frc.robot.sim.SimMechanism;
+import frc.robot.sim.maplesim.Arena2025Bunnybots;
+import frc.robot.sim.maplesim.BunnybotsStarSpire.HumanBehavior;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.GyroIO;
 import frc.robot.subsystems.drive.GyroIOPigeon2;
@@ -34,6 +43,8 @@ import frc.robot.subsystems.drive.ModuleIOTalonFXReal;
 import frc.robot.subsystems.drive.ModuleIOTalonFXSim;
 import frc.robot.subsystems.groundintake.GroundIntake;
 import frc.robot.subsystems.groundintake.GroundIntakeConstants;
+import frc.robot.subsystems.groundintake.GroundIntakeConstants.GroundIntakePivotConstants;
+import frc.robot.subsystems.groundintake.GroundIntakeConstants.GroundIntakeRollerConstants;
 import frc.robot.subsystems.groundintake.GroundIntakePivotIOSim;
 import frc.robot.subsystems.groundintake.GroundIntakePivotIOTalonFX;
 import frc.robot.subsystems.groundintake.GroundIntakeRollerIOSim;
@@ -75,6 +86,8 @@ public class RobotContainer {
   private final Indexer indexer;
   private final Shooter shooter;
 
+  private final MechanismPoseLogger mechanismPoseLogger;
+
   // Controller
   private final CommandXboxController driverController = new CommandXboxController(0);
   private final CommandXboxController operatorController = new CommandXboxController(1);
@@ -97,7 +110,7 @@ public class RobotContainer {
                 (pose) -> {});
         vision =
             new Vision(
-                drive,
+                drive::accept,
                 new VisionIOPhotonVision(
                     VisionConstants.camera0Name, VisionConstants.robotToCamera0));
         groundIntake =
@@ -135,7 +148,7 @@ public class RobotContainer {
                 driveSimulation::setSimulationWorldPose);
         vision =
             new Vision(
-                drive,
+                drive::accept,
                 new VisionIOPhotonVisionSim(
                     VisionConstants.camera0Name,
                     VisionConstants.robotToCamera0,
@@ -156,13 +169,88 @@ public class RobotContainer {
                 new ModuleIO(),
                 new ModuleIO(),
                 (pose) -> {});
-        vision = new Vision(drive, new VisionIO() {});
+        vision = new Vision(drive::accept, new VisionIO() {});
         groundIntake =
             new GroundIntake(new GroundIntakeRollerIOTalonFX(), new GroundIntakePivotIOTalonFX());
         indexer = new Indexer(new IndexerIOTalonFX());
         shooter = new Shooter(new ShooterIO(), new ShooterIO());
         break;
     }
+
+    // fix hte gi position stuff cuz iirc thats all worng
+    // presets
+    // start using gi
+    NamedCommands.registerCommand(
+        "Shoot High",
+        new SequentialCommandGroup(
+            shooter.setShooterVelocity(
+                () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY,
+                () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY.unaryMinus()),
+            new WaitCommand(1.0),
+            indexer.setIndexerVelocity(() -> RotationsPerSecond.of(3)),
+            groundIntake.setGroundIntakeRollerVelocity(() -> RotationsPerSecond.of(3))));
+    NamedCommands.registerCommand(
+        "Shoot Low",
+        new SequentialCommandGroup(
+            shooter.setShooterVelocity(
+                () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY,
+                () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY.unaryMinus()),
+            new WaitCommand(1.0),
+            indexer.setIndexerVelocity(() -> RotationsPerSecond.of(3)),
+            groundIntake.setGroundIntakeRollerVelocity(() -> RotationsPerSecond.of(3))));
+    NamedCommands.registerCommand(
+        "Indexer Intake", indexer.setIndexerVelocity(() -> RotationsPerSecond.of(3)));
+    NamedCommands.registerCommand(
+        "Stop Motors",
+        new ParallelCommandGroup(
+            shooter.setShooterVelocity(() -> RotationsPerSecond.of(0)),
+            indexer.setIndexerVelocity(() -> RotationsPerSecond.of(0)),
+            groundIntake.setGroundIntakeRollerVelocity(() -> RotationsPerSecond.of(0))));
+    NamedCommands.registerCommand(
+        "Lower GI",
+        new SequentialCommandGroup(
+            groundIntake.setGroundIntakePivotPosition(
+                GroundIntakePivotConstants.MIN_ANGLE), // get the
+            // correct
+            // value
+            groundIntake.setGroundIntakeRollerVelocity(() -> RPM.of(1200))));
+    groundIntake
+        .setGroundIntakePivotVoltage(
+            () -> GroundIntakePivotConstants.GROUND_INTAKE_PIVOT_VOLTAGE_DOWN)
+        .repeatedly()
+        .until(
+            () -> {
+              return groundIntake.inputsPivot.groundIntakePivotPositionRads.isNear(
+                  GroundIntakePivotConstants.MIN_ANGLE,
+                  GroundIntakeConstants.GroundIntakePivotConstants.PIVOT_POSITION_TOLERANCE);
+            });
+    NamedCommands.registerCommand(
+        "Index",
+        new SequentialCommandGroup(
+            new WaitUntilCommand(
+                () -> {
+                  return indexer.inputs.indexerDistanceM.lt(Inches.of(3));
+                }),
+            indexer.setIndexerVelocity(() -> IndexerConstants.INDEXER_INTAKE_VELOCITY),
+            new WaitUntilCommand(
+                () -> {
+                  return indexer.inputs.indexerDistanceM.gt(Inches.of(3));
+                }),
+            indexer.setIndexerVelocity(() -> RPM.of(0))));
+    NamedCommands.registerCommand(
+        "Raise GI",
+        new SequentialCommandGroup(
+            groundIntake
+                .setGroundIntakePivotVoltage(
+                    () -> GroundIntakePivotConstants.GROUND_INTAKE_PIVOT_VOLTAGE_UP)
+                .repeatedly()
+                .until(
+                    () -> {
+                      return groundIntake.inputsPivot.groundIntakePivotPositionRads.isNear(
+                          GroundIntakePivotConstants.MAX_ANGLE,
+                          GroundIntakeConstants.GroundIntakePivotConstants
+                              .PIVOT_POSITION_TOLERANCE);
+                    })));
 
     // Set up auto routines
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
@@ -172,26 +260,99 @@ public class RobotContainer {
         "Drive Wheel Radius Characterization", DriveCommands.wheelRadiusCharacterization(drive));
     autoChooser.addOption(
         "Drive Simple FF Characterization", DriveCommands.feedforwardCharacterization(drive));
-
+    autoChooser.addOption(
+        "No Leave High Outer 3",
+        new SequentialCommandGroup(
+            shooter.setShooterVelocity(
+                () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY,
+                () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY.unaryMinus()),
+            new WaitCommand(1.0),
+            indexer.setIndexerVelocity(() -> RotationsPerSecond.of(3)),
+            groundIntake.setGroundIntakeRollerVelocity(() -> RotationsPerSecond.of(3))));
+    autoChooser.addOption(
+        "No Leave Low Outer 3",
+        new SequentialCommandGroup(
+            shooter.setShooterVelocity(
+                () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY,
+                () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY.unaryMinus()),
+            new WaitCommand(1.0),
+            indexer.setIndexerVelocity(() -> RotationsPerSecond.of(3)),
+            groundIntake.setGroundIntakeRollerVelocity(() -> RotationsPerSecond.of(3))));
     drive.addRoutinesToChooser(autoChooser);
     indexer.addRoutinesToChooser(autoChooser);
     shooter.addRoutinesToChooser(autoChooser);
     groundIntake.addRoutinesToChooser(autoChooser);
+    mechanismPoseLogger = new MechanismPoseLogger(groundIntake, indexer, shooter);
+    manualButtonBindings();
   }
 
   public void manualButtonBindings() {
-    // drive controls
-    DriveCommands.joystickDrive(
-        drive,
-        () ->
-            -driverController.getLeftY() * Math.pow(Math.abs(driverController.getLeftY()), 1.2 - 1),
-        () ->
-            -driverController.getLeftX() * Math.pow(Math.abs(driverController.getLeftX()), 1.2 - 1),
-        () ->
-            -driverController.getRightX()
-                * Math.pow(Math.abs(driverController.getRightX()), 2.2 - 1));
+    // drivetrain controls
+    drive.setDefaultCommand(
+        DriveCommands.joystickDrive(
+            drive,
+            () ->
+                -driverController.getLeftY()
+                    * Math.pow(Math.abs(driverController.getLeftY()), 1.2 - 1),
+            () ->
+                -driverController.getLeftX()
+                    * Math.pow(Math.abs(driverController.getLeftX()), 1.2 - 1),
+            () -> (0.5) * -driverController.getRightX()));
+    driverController.y().onTrue(drive.resetGyro());
 
-    // indexer controls
+    // driver indexer controls
+    driverController
+        .rightBumper()
+        .whileTrue(
+            indexer.setIndexerVelocity(
+                () -> IndexerConstants.INDEXER_INTAKE_VELOCITY)) // TODO: update value later
+        .onFalse(indexer.setIndexerVelocity(() -> IndexerConstants.INDEXER_NO_VELOCITY));
+
+    // driver shooter controls
+    driverController
+        .rightTrigger()
+        .whileTrue(
+            shooter.setShooterVelocity(
+                () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY,
+                () ->
+                    ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY
+                        .unaryMinus())) // TODO: update value later to shoot in
+        // high goal
+        .onFalse(shooter.setShooterVelocity(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
+    driverController
+        .leftTrigger()
+        .whileTrue(
+            shooter.setShooterVelocity(
+                () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY,
+                () ->
+                    ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY
+                        .unaryMinus())) // TODO: update value later to shoot in
+        // low goal
+        .onFalse(shooter.setShooterVelocity(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
+
+    // operator one button intake
+    operatorController
+        .x()
+        .whileTrue(
+            new ParallelCommandGroup(
+                groundIntake
+                    .setGroundIntakeRollerVelocity(
+                        () ->
+                            GroundIntakeConstants.GroundIntakeRollerConstants
+                                .GROUNDINTAKE_ROLLER_VELOCITY
+                                .times(-0.6))
+                    .repeatedly(),
+                indexer.setIndexerVelocity(() -> IndexerConstants.INDEXER_INTAKE_VELOCITY),
+                shooter.setShooterVelocity(
+                    () -> ShooterConstants.SHOOTER_REVERSE_VELOCITY,
+                    () -> ShooterConstants.SHOOTER_REVERSE_VELOCITY.unaryMinus())))
+        .onFalse(
+            new ParallelCommandGroup(
+                groundIntake.setGroundIntakeRollerVelocity(() -> RotationsPerSecond.of(0)),
+                indexer.setIndexerVelocity(() -> IndexerConstants.INDEXER_NO_VELOCITY),
+                shooter.setShooterVelocity(() -> ShooterConstants.SHOOTER_NO_VELOCITY)));
+
+    // operator indexer controls
     operatorController
         .rightBumper()
         .whileTrue(
@@ -210,42 +371,50 @@ public class RobotContainer {
         .leftTrigger()
         .whileTrue(
             shooter.setShooterVelocity(
-                () -> ShooterConstants.SHOOTER_REVERSE_VELOCITY)) // TODO: update value later
+                () -> ShooterConstants.SHOOTER_REVERSE_VELOCITY,
+                () ->
+                    ShooterConstants.SHOOTER_REVERSE_VELOCITY
+                        .unaryMinus())) // TODO: update value later
         .onFalse(shooter.setShooterVelocity(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
     operatorController
         .rightTrigger()
         .whileTrue(
             shooter.setShooterVelocity(
+                () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY,
                 () ->
-                    ShooterConstants
-                        .SHOOTER_HIGH_GOAL_VELOCITY)) // TODO: update value later to shoot in
+                    ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY
+                        .unaryMinus())) // TODO: update value later to shoot in
         // high goal
         .onFalse(shooter.setShooterVelocity(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
     operatorController
-        .y()
-        .onTrue(
+        .b()
+        .whileTrue(
             shooter.setShooterVelocity(
+                () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY,
                 () ->
-                    ShooterConstants
-                        .SHOOTER_LOW_GOAL_VELOCITY)) // TODO: update value later to shoot in
+                    ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY
+                        .unaryMinus())) // TODO: update value later to shoot in
         // low goal
         .onFalse(shooter.setShooterVelocity(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
 
     // ground intake controls
+    operatorController
+        .y()
+        .whileTrue(
+            groundIntake.setGroundIntakePivotVoltage(
+                () -> GroundIntakePivotConstants.GROUND_INTAKE_PIVOT_VOLTAGE_UP))
+        .onFalse(groundIntake.setGroundIntakePivotVoltage(() -> Volts.of(0)));
+    operatorController
+        .a()
+        .whileTrue(
+            groundIntake.setGroundIntakePivotVoltage(
+                () -> GroundIntakePivotConstants.GROUND_INTAKE_PIVOT_VOLTAGE_DOWN))
+        .onFalse(groundIntake.setGroundIntakePivotVoltage(() -> Volts.of(0)));
     groundIntake.setDefaultCommand(
         groundIntake.setGroundIntakeRollerVelocity(
             () ->
-                RotationsPerSecond.of(
-                    operatorController.getLeftY()
-                        * GroundIntakeConstants.GroundIntakeRollerConstants
-                            .GROUNDINTAKE_ROLLER_VELOCITY_MULTIPLIER))); // TODO: update value later
-    groundIntake.setDefaultCommand(
-        groundIntake.setGroundIntakePivotVelocity(
-            () ->
-                RotationsPerSecond.of(
-                    operatorController.getRightY()
-                        * GroundIntakeConstants.GroundIntakePivotConstants
-                            .GROUND_INTAKE_PIVOT_VELOCITY_MULTIPLIER))); // TODO: update value later
+                GroundIntakeRollerConstants.GROUNDINTAKE_ROLLER_VELOCITY.times(
+                    operatorController.getLeftY()))); // TODO: update value later
   }
 
   /**
@@ -272,6 +441,7 @@ public class RobotContainer {
     Logger.recordOutput(
         "FieldSimulation/RobotPosition", driveSimulation.getSimulatedDriveTrainPose());
     Logger.recordOutput(
-        "FieldSimulation/Lunites", SimulatedArena.getInstance().getGamePiecesArrayByType("Lunite"));
+    "FieldSimulation/Lunites",
+    SimulatedArena.getInstance().getGamePiecesArrayByType("Lunite"));
   }
 }
