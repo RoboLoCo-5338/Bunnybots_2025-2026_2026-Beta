@@ -1,0 +1,25 @@
+# Source - https://stackoverflow.com/q
+# Posted by oneworld, modified by community. See post 'Timeline' for change history
+# Retrieved 2025-11-09, License - CC BY-SA 4.0
+
+name: Branch Naming Convention Check
+on:
+  create:
+
+permissions:
+  contents: write
+
+jobs:
+  branch-naming-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Check branch name
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          VALID_PATTERNS="^(main|master|development|(feature|refactor|doc|(bug|hot)fix)(\/[a-zA-Z0-9]+([-][a-zA-Z0-9]+)*){1,2})$"
+          if ! [[ $BRANCH_NAME =~ $VALID_PATTERNS ]]; then
+            git push -d origin $BRANCH_NAME   # Delete remote
+            exit 1
+          fi

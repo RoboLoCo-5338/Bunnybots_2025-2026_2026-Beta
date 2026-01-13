@@ -1,0 +1,23 @@
+name: Format
+on: push
+permissions:
+  contents: write
+jobs:
+  spotless:
+    name: Spotless
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: 17
+      - name: Add repository to git safe directories
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      - name: Check Spotless
+        id: spotlessCheck
+        run: ./gradlew spotlessCheck
