@@ -106,6 +106,11 @@ public class ProjectileTrajectoryUtils {
     else return (-b - Math.sqrt(b * b - 4 * a * c)) / (2 * a);
   }
 
+  public static double dfdtDepressedQuarticRealHigh(
+      double a, double b, double b_, double c, double c_, double d, double d_) {
+    return 0;
+  }
+
   public static double solveDepressedQuarticRealHigh(double a, double b, double c, double d) {
     return 0.5
             * Math.sqrt(
