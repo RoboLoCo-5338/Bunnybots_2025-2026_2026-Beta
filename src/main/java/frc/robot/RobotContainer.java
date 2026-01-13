@@ -32,7 +32,7 @@ import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
 import frc.robot.sim.MechanismPoseLogger;
 import frc.robot.sim.SimMechanism;
-import frc.robot.sim.maplesim.Arena2025Bunnybots;
+import frc.robot.sim.maplesim.ArenaTesting;
 import frc.robot.sim.maplesim.BunnybotsStarSpire.HumanBehavior;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.GyroIO;
@@ -123,7 +123,7 @@ public class RobotContainer {
         driveSimulation =
             new SwerveDriveSimulation(
                 Drive.mapleSimConfig, new Pose2d(3, 0.5, new Rotation2d(Math.PI)));
-        SimulatedArena.overrideInstance(new Arena2025Bunnybots(HumanBehavior.ON));
+        SimulatedArena.overrideInstance(new ArenaTesting(HumanBehavior.ON));
         SimulatedArena.getInstance().addDriveTrainSimulation(driveSimulation);
         // Sim robot, instantiate physics sim IO implementations
         drive =
@@ -176,6 +176,8 @@ public class RobotContainer {
         shooter = new Shooter(new ShooterIO(), new ShooterIO());
         break;
     }
+
+    RobotState.startInstance(drive, groundIntake, shooter, indexer, vision);
 
     // fix hte gi position stuff cuz iirc thats all worng
     // presets
@@ -299,6 +301,19 @@ public class RobotContainer {
                     * Math.pow(Math.abs(driverController.getLeftX()), 1.2 - 1),
             () -> (0.5) * -driverController.getRightX()));
     driverController.y().onTrue(drive.resetGyro());
+    // driverController
+    //     .b()
+    //     .onTrue(
+    //         new InstantCommand(
+    //             () -> {
+    //               Time t =
+    //                   ProjectileTrajectoryUtils.calcTargetTime(
+    //                       MetersPerSecond.of(0),
+    //                       MetersPerSecond.of(0),
+    //                       new Translation3d(3, 4, 2.0),
+    //                       Degrees.of(60));
+    //               Logger.recordOutput("QuarticSolution/Time", t.in(Seconds));
+    //             }));
 
     // driver indexer controls
     driverController

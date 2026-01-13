@@ -1,16 +1,30 @@
 package frc.robot;
 
+import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.Seconds;
+
 import edu.wpi.first.hal.HALUtil;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.units.measure.Time;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.groundintake.GroundIntake;
 import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.vision.Vision;
+import frc.robot.util.ProjectileTrajectoryUtils;
 import frc.robot.util.SubsystemProfiles;
 import java.util.HashMap;
 import java.util.Map;
+import org.littletonrobotics.junction.Logger;
 
 public class RobotState {
 
@@ -29,6 +43,8 @@ public class RobotState {
     kDriveIntakeUp,
 
     kAutoScore,
+    kAutoDriveTest,
+
     kManualScore,
 
     kAutoDefault,
@@ -74,6 +90,18 @@ public class RobotState {
 
     Map<RobotAction, Runnable> periodicHash = new HashMap<>();
     periodicHash.put(RobotAction.kTeleopDefault, () -> {});
+    periodicHash.put(
+        RobotAction.kAutoScore,
+        () -> {
+          Time t =
+              ProjectileTrajectoryUtils.calcTargetTime(
+                  MetersPerSecond.of(0),
+                  MetersPerSecond.of(0),
+                  new Translation3d(3, 4, 2.0),
+                  Degrees.of(60));
+          Logger.recordOutput("QuarticSolution/Time", t.in(Seconds));
+        });
+    periodicHash.put(RobotAction.kAutoDriveTest, this::autoDriveTestPeriodic);
     periodicHash.put(RobotAction.kAutoDefault, () -> {});
     // periodicHash.put(RobotAction.kLuniteLowGoal, this::luniteLowGoalPeriodic);
     // periodicHash.put(RobotAction.kLuniteHighGoal, this::luniteLowGoalPeriodic);
@@ -103,6 +131,30 @@ public class RobotState {
     m_threadPriorityTimer.start();
   }
 
+  public void updateRobotAction(RobotAction action) {
+    /*
+     *  FRC team 422 MechTech Dragons - may end up using this code
+     */
+    // DriveProfiles newDriveState = DriveProfiles.kDefault;
+
+    // switch (action) {
+    //   case kAutoDefault:
+    //     newDriveState = DriveProfiles.kAutoAlign;
+    //     break;
+    //   case kTeleopDefault:
+    //     newDriveState = DriveProfiles.kDefault;
+    //     break;
+    //   default:
+    //     break;
+    // }
+
+    // if (newDriveState != m_drive.getCurrentProfile()) {
+    //   m_drive.updateProfile(newDriveState);
+    // }
+
+    m_profiles.setCurrentProfile(action);
+  }
+
   public static RobotState startInstance(
       Drive drive, GroundIntake intake, Shooter shooter, Indexer indexer, Vision vision) {
     if (m_instance == null) {
@@ -115,30 +167,31 @@ public class RobotState {
     return m_instance;
   }
 
-  public void coralIntakingPeriodic() {
-    // when we have a game piece don't runm
-    // if (m_manipulator.gamePieceInFunnel() || m_manipulator.fullyIndexed()) {
-    //   if (!(DriverStation.isAutonomous() || m_autoTestingMode)) {
-    //     m_drive.updateProfile(DriveProfiles.kDefault);
-    //   }
-    // }
-    // if (m_manipulator.hasGamePiece()) {
-    //   if (!m_gamepieceUpdate) {
-    //     m_gamepieceUpdate = true;
-    //     m_led.gamepiece();
-    //   }
-    //   m_indexer.updateState(IndexerState.kIdle);
-    // }
-    // // wait until the manipulator is in position before we intake
-    // else if (m_manipulator.atSetpoint() && m_elevator.atSetpoint()) {
-    //   m_indexer.updateState(IndexerState.kIndexing);
-    // } else {
-    //   m_indexer.updateState(IndexerState.kIdle);
-    // }
+  private final CommandXboxController driverController = new CommandXboxController(0);
+
+  public void autoDriveTestPeriodic() {
+
+    double start = HALUtil.getFPGATime();
+
+    // TODO: essentialy euler's method, tracking position, velocity, angle, angular velocity,
+    // capping actual acceleration & angular acceleration by computed max values
+    Translation2d linearVelocity =
+        new Translation2d(driverController.getLeftY(), driverController.getLeftX());
+    ChassisSpeeds speeds =
+        new ChassisSpeeds(
+            linearVelocity.getX() * m_drive.getMaxLinearSpeedMetersPerSec(),
+            linearVelocity.getY() * m_drive.getMaxLinearSpeedMetersPerSec(),
+            0 * m_drive.getMaxAngularSpeedRadPerSec());
+    m_drive.runVelocity(
+        ChassisSpeeds.fromFieldRelativeSpeeds(
+            speeds,
+            DriveCommands.isFlipped
+                ? m_drive.getRotation().plus(new Rotation2d(Math.PI))
+                : m_drive.getRotation()));
   }
 
   public void onEnable() {
-    // m_drive.setBrake();
+    m_drive.stop();
 
     // setDefaultAction();
 
@@ -146,7 +199,9 @@ public class RobotState {
     // m_numHighGoalScoredAuto = 0;
   }
 
-  public void onDisable() {}
+  public void onDisable() {
+    m_drive.stop();
+  }
 
   public void updateRobotState() {
     double start = HALUtil.getFPGATime();
@@ -171,6 +226,12 @@ public class RobotState {
       Threads.setCurrentThreadPriority(true, 10);
       m_threadPriorityTimer = null;
     }
+    // Runs the Scheduler. This is responsible for polling buttons, adding
+    // newly-scheduled commands, running already-scheduled commands, removing
+    // finished or interrupted commands, and running subsystem periodic() methods.
+    // This must be called from the robot's periodic block in order for anything in
+    // the Command-based framework to work.
+    CommandScheduler.getInstance().run();
 
     m_profiles.getPeriodicFunctionTimed().run();
 
