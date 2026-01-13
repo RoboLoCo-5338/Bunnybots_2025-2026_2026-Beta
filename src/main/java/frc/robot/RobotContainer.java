@@ -23,11 +23,13 @@ import com.pathplanner.lib.auto.NamedCommands;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.WaitUntilCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import frc.robot.RobotState.RobotAction;
 import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
 import frc.robot.sim.MechanismPoseLogger;
@@ -301,19 +303,20 @@ public class RobotContainer {
                     * Math.pow(Math.abs(driverController.getLeftX()), 1.2 - 1),
             () -> (0.5) * -driverController.getRightX()));
     driverController.y().onTrue(drive.resetGyro());
-    // driverController
-    //     .b()
-    //     .onTrue(
-    //         new InstantCommand(
-    //             () -> {
-    //               Time t =
-    //                   ProjectileTrajectoryUtils.calcTargetTime(
-    //                       MetersPerSecond.of(0),
-    //                       MetersPerSecond.of(0),
-    //                       new Translation3d(3, 4, 2.0),
-    //                       Degrees.of(60));
-    //               Logger.recordOutput("QuarticSolution/Time", t.in(Seconds));
-    //             }));
+    driverController
+        .b()
+        .onTrue(
+            new InstantCommand(
+                () -> {
+                  RobotState.getInstance().updateRobotAction(RobotAction.kAutoScore);
+                }));
+    driverController
+        .b()
+        .onFalse(
+            new InstantCommand(
+                () -> {
+                  RobotState.getInstance().updateRobotAction(RobotAction.kTeleopDefault);
+                }));
 
     // driver indexer controls
     driverController

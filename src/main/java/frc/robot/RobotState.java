@@ -1,25 +1,29 @@
 package frc.robot;
 
 import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.Inches;
 import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.Pounds;
+import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static edu.wpi.first.units.Units.Seconds;
 
 import edu.wpi.first.hal.HALUtil;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Time;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.groundintake.GroundIntake;
 import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.shooter.Shooter;
+import frc.robot.subsystems.shooter.ShooterConstants;
 import frc.robot.subsystems.vision.Vision;
+import frc.robot.util.ProjectileSpeedUtils;
 import frc.robot.util.ProjectileTrajectoryUtils;
 import frc.robot.util.SubsystemProfiles;
 import java.util.HashMap;
@@ -93,13 +97,37 @@ public class RobotState {
     periodicHash.put(
         RobotAction.kAutoScore,
         () -> {
-          Time t =
+          Time timeOfFlight =
               ProjectileTrajectoryUtils.calcTargetTime(
                   MetersPerSecond.of(0),
                   MetersPerSecond.of(0),
                   new Translation3d(3, 4, 2.0),
                   Degrees.of(60));
-          Logger.recordOutput("QuarticSolution/Time", t.in(Seconds));
+          Logger.recordOutput("Trajectory/Time", timeOfFlight.in(Seconds));
+          LinearVelocity shooterVelocity =
+              ProjectileTrajectoryUtils.calcShooterVelocity(
+                  timeOfFlight, new Translation3d(3, 4, 2.0), Degrees.of(60));
+          Logger.recordOutput("Trajectory/Velocity", shooterVelocity.in(MetersPerSecond));
+          Angle robotHeadingAzimuth =
+              ProjectileTrajectoryUtils.calcRobotHeadingAzimuth(
+                  MetersPerSecond.of(0),
+                  MetersPerSecond.of(0),
+                  timeOfFlight,
+                  shooterVelocity,
+                  new Translation3d(3, 4, 2.0),
+                  Degrees.of(60));
+          Logger.recordOutput("Trajectory/Azimuth", robotHeadingAzimuth.in(Degrees));
+
+          AngularVelocity shooterAngularVelocity =
+              ProjectileSpeedUtils.calcNecessaryWheelSpeed(
+                  shooterVelocity,
+                  ShooterConstants.ShooterSimConstants.SHOOTER_MOI,
+                  Pounds.of(0.5),
+                  Inches.of(3.0 / 2));
+          Logger.recordOutput(
+              "Trajectory/ShooterRotationsPerSecond",
+              shooterAngularVelocity.in(RotationsPerSecond));
+          m_shooter.setShooterVelocity(()->shooterAngularVelocity);
         });
     periodicHash.put(RobotAction.kAutoDriveTest, this::autoDriveTestPeriodic);
     periodicHash.put(RobotAction.kAutoDefault, () -> {});
@@ -175,19 +203,19 @@ public class RobotState {
 
     // TODO: essentialy euler's method, tracking position, velocity, angle, angular velocity,
     // capping actual acceleration & angular acceleration by computed max values
-    Translation2d linearVelocity =
-        new Translation2d(driverController.getLeftY(), driverController.getLeftX());
-    ChassisSpeeds speeds =
-        new ChassisSpeeds(
-            linearVelocity.getX() * m_drive.getMaxLinearSpeedMetersPerSec(),
-            linearVelocity.getY() * m_drive.getMaxLinearSpeedMetersPerSec(),
-            0 * m_drive.getMaxAngularSpeedRadPerSec());
-    m_drive.runVelocity(
-        ChassisSpeeds.fromFieldRelativeSpeeds(
-            speeds,
-            DriveCommands.isFlipped
-                ? m_drive.getRotation().plus(new Rotation2d(Math.PI))
-                : m_drive.getRotation()));
+    // Translation2d linearVelocity =
+    //     new Translation2d(driverController.getLeftY(), driverController.getLeftX());
+    // ChassisSpeeds speeds =
+    //     new ChassisSpeeds(
+    //         linearVelocity.getX() * m_drive.getMaxLinearSpeedMetersPerSec(),
+    //         linearVelocity.getY() * m_drive.getMaxLinearSpeedMetersPerSec(),
+    //         0 * m_drive.getMaxAngularSpeedRadPerSec());
+    // m_drive.runVelocity(
+    //     ChassisSpeeds.fromFieldRelativeSpeeds(
+    //         speeds,
+    //         DriveCommands.isFlipped
+    //             ? m_drive.getRotation().plus(new Rotation2d(Math.PI))
+    //             : m_drive.getRotation()));
   }
 
   public void onEnable() {
