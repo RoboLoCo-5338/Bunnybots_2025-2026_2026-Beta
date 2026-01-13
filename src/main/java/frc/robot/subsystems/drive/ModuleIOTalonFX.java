@@ -151,6 +151,12 @@ public abstract class ModuleIOTalonFX extends ModuleIO {
     tryUntilOk(5, () -> turnTalon.getConfigurator().apply(turnConfig, 0.25));
   }
 
+  @Override
+  public void reconfigureDriveMotor() {
+    var driveConfig = getDriveConfiguration(constants);
+    tryUntilOk(5, () -> driveTalon.getConfigurator().apply(driveConfig, 0.25));
+  }
+
   private TalonFXConfiguration getDriveConfiguration(
       SwerveModuleConstants<TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration>
           constants) {

@@ -9,7 +9,6 @@ import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.simulation.FlywheelSim;
 import frc.robot.sim.SimMechanism;
-import frc.robot.subsystems.shooter.ShooterConstants.ShooterSimConstants;
 import org.littletonrobotics.junction.Logger;
 
 public class ShooterIOSim extends ShooterIOSpark implements SimMechanism {
@@ -32,7 +31,7 @@ public class ShooterIOSim extends ShooterIOSpark implements SimMechanism {
         new FlywheelSim(
             LinearSystemId.createFlywheelSystem(
                 DCMotor.getNeoVortex(1),
-                ShooterSimConstants.SHOOTER_MOI.in(KilogramSquareMeters),
+                ShooterConstants.ShooterSimConstants.SHOOTER_MOI.in(KilogramSquareMeters),
                 ShooterConstants.GEARING),
             gearbox);
     motorSim = new SparkFlexSim(shooterMotor, gearbox);
