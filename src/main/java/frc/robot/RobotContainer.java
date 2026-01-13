@@ -317,6 +317,20 @@ public class RobotContainer {
                 () -> {
                   RobotState.getInstance().updateRobotAction(RobotAction.kTeleopDefault);
                 }));
+    driverController
+        .x()
+        .onTrue(
+            new InstantCommand(
+                () -> {
+                  RobotState.getInstance().updateRobotAction(RobotAction.kAutoDriveTest);
+                }));
+    driverController
+        .x()
+        .onFalse(
+            new InstantCommand(
+                () -> {
+                  RobotState.getInstance().updateRobotAction(RobotAction.kTeleopDefault);
+                }));
 
     // driver indexer controls
     driverController
