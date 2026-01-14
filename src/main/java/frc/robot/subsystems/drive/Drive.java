@@ -336,6 +336,35 @@ public class Drive extends SubsystemBase
     Logger.recordOutput("SwerveStates/SetpointsOptimized", setpointStates);
   }
 
+  public void runVelocityDangerous(ChassisSpeeds speeds) {
+    // Calculate module setpoints
+    speeds = ChassisSpeeds.discretize(speeds, 0.02);
+    SwerveModuleState[] setpointStates = kinematics.toSwerveModuleStates(speeds);
+    if (setpointStates[0].speedMetersPerSecond > TunerConstants.kSpeedAt12Volts.in(MetersPerSecond)
+        || setpointStates[1].speedMetersPerSecond
+            > TunerConstants.kSpeedAt12Volts.in(MetersPerSecond)
+        || setpointStates[2].speedMetersPerSecond
+            > TunerConstants.kSpeedAt12Volts.in(MetersPerSecond)
+        || setpointStates[3].speedMetersPerSecond
+            > TunerConstants.kSpeedAt12Volts.in(MetersPerSecond)) {
+      Logger.recordOutput("dangerousSwerve/Run", 0);
+      return;
+    }
+    Logger.recordOutput("dangerousSwerve/Run", 1);
+
+    // Log unoptimized setpoints and setpoint speeds
+    Logger.recordOutput("SwerveStates/Setpoints", setpointStates);
+    Logger.recordOutput("SwerveChassisSpeeds/Setpoints", speeds);
+
+    // Send setpoints to modules
+    for (int i = 0; i < 4; i++) {
+      modules[i].runSetpoint(setpointStates[i]);
+    }
+
+    // Log optimized setpoints (runSetpoint mutates each state)
+    Logger.recordOutput("SwerveStates/SetpointsOptimized", setpointStates);
+  }
+
   /** Runs the drive in a straight line with the specified drive output. */
   public void runCharacterization(double output) {
     for (int i = 0; i < 4; i++) {
@@ -381,7 +410,7 @@ public class Drive extends SubsystemBase
   }
 
   /** Returns the measured chassis speeds of the robot. */
-  @AutoLogOutput(key = "SwerveChassisSpeeds/Measured", unit = "RadPerSecond")
+  @AutoLogOutput(key = "SwerveChassisSpeeds/Measured")
   private ChassisSpeeds getChassisSpeeds() {
     return kinematics.toChassisSpeeds(getModuleStates());
   }

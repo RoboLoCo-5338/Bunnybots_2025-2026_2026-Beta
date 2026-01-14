@@ -12,6 +12,7 @@ import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static edu.wpi.first.units.Units.Seconds;
 
 import edu.wpi.first.hal.HALUtil;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -301,10 +302,32 @@ public class RobotState {
     t /= 5.0;
     return ((t) * (t - 1.5) * (t - 4) * (t - 9) * (t - 11) * (t - 13) * (t - 14) * (t - 17)
             * (t - 19) / 1000000.0)
-        / 0.8;
+        / 20.0;
     // return Math.pow(Math.E, t - 5);
   }
 
+  private double magicFunctionDriveAccelTestIntegral(double t1, double t2) {
+    int n = 100; // Increase number of intervals for better accuracy
+    double h = (t2 - t1) / n;
+    double sum = 0.5 * (magicFunctionDriveAccelTest(t1) + magicFunctionDriveAccelTest(t2));
+    for (int i = 1; i < n; i++) {
+      double ti = t1 + i * h;
+      sum += magicFunctionDriveAccelTest(ti);
+    }
+    return sum * h;
+  }
+
+  private LinearVelocity maxLinearVelocityPerAngularVelocity(AngularVelocity omega) {
+    // Simple model: assume a max linear velocity of 3 m/s at 0 rad/s angular velocity,
+    // linearly decreasing to 0 m/s at max angular velocity of the robot.
+    AngularVelocity maxAngularVelocityRadPerSec =
+        RadiansPerSecond.of(m_drive.getMaxAngularSpeedRadPerSec());
+    double ratio =
+        1 - Math.abs(omega.in(RadiansPerSecond)) / maxAngularVelocityRadPerSec.in(RadiansPerSecond);
+    ratio = Math.max(0, ratio); // Ensure non-negative
+    return MetersPerSecond.of(3 * ratio);
+  }
+double startY = 0.442189;
   public void autoDriveAccelTest() {
     Time now = Microseconds.of(HALUtil.getFPGATime());
     Time dTime = now.minus(lastPeriodic);
@@ -321,10 +344,20 @@ public class RobotState {
     // x = x.times(1.6201884787);
     // x = x.times(1.6885619176);
     // x = x.times(1.6338803120);
-    m_drive.runVelocity(
+
+    double diff = startY-m_drive.getPose().getTranslation().getY();
+    m_drive.runVelocityDangerous(
         ChassisSpeeds.fromFieldRelativeSpeeds(
-            new ChassisSpeeds(MetersPerSecond.of(0.2), MetersPerSecond.of(1), xIn),
-            m_drive.getRotation()));
+            new ChassisSpeeds(MetersPerSecond.of(1), MetersPerSecond.of(diff/2), xIn),
+            m_drive
+                .getRotation()
+                .plus(
+                    new Rotation2d(
+                        Radians.of(
+                            1.0
+                                * magicFunctionDriveAccelTestIntegral(
+                                    t.in(Seconds) + 0.0, t.in(Seconds) + 0.02)
+                                / 2)))));
 
     Logger.recordOutput(
         "DriveTest/dx",
