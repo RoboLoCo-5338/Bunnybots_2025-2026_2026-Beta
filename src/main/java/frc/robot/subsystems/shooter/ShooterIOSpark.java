@@ -3,8 +3,8 @@ package frc.robot.subsystems.shooter;
 import static edu.wpi.first.units.Units.Amps;
 import static edu.wpi.first.units.Units.Celsius;
 import static edu.wpi.first.units.Units.Millimeters;
-import static edu.wpi.first.units.Units.RPM;
-import static edu.wpi.first.units.Units.Rotations;
+import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 import static edu.wpi.first.units.Units.Volts;
 
 import au.grapplerobotics.LaserCan;
@@ -129,11 +129,15 @@ public class ShooterIOSpark extends ShooterIO {
     sparkUtil.ifOk(
         shooterMotor,
         shooterEncoder::getPosition,
-        (value) -> inputs.shooterPositionRads = Rotations.of(value));
+        (value) ->
+            inputs.shooterPositionRads =
+                Radians.of(value * 2.0 * Math.PI * ShooterConstants.GEARING));
     sparkUtil.ifOk(
         shooterMotor,
         shooterEncoder::getVelocity,
-        (value) -> inputs.shooterVelocityRadPerSec = RPM.of(value));
+        (value) ->
+            inputs.shooterVelocityRadPerSec =
+                RadiansPerSecond.of(value * 2.0 * Math.PI / 60.0 * ShooterConstants.GEARING));
     sparkUtil.ifOk(
         shooterMotor,
         new DoubleSupplier[] {shooterMotor::getAppliedOutput, shooterMotor::getBusVoltage},
@@ -176,11 +180,10 @@ public class ShooterIOSpark extends ShooterIO {
 
   @Override
   public void setShooterVelocity(AngularVelocity velocity) {
+    double velRadPerSec = velocity.in(RadiansPerSecond);
+    double velRPM = velRadPerSec * 60.0 / (2.0 * Math.PI) / ShooterConstants.GEARING;
     shooterClosedLoopController.setReference(
-        velocity.in(RPM),
-        ControlType.kVelocity,
-        ClosedLoopSlot.kSlot0,
-        feedforward.calculate(velocity.in(RPM)));
+        velRPM, ControlType.kVelocity, ClosedLoopSlot.kSlot0, feedforward.calculate(velRadPerSec));
   }
 
   public void follow(ShooterIOSpark leader, boolean inverted) {

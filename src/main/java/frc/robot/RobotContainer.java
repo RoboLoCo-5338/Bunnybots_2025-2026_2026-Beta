@@ -187,7 +187,7 @@ public class RobotContainer {
     NamedCommands.registerCommand(
         "Shoot High",
         new SequentialCommandGroup(
-            shooter.setShooterVelocity(
+            shooter.setShooterVelocityCommand(
                 () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY,
                 () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY.unaryMinus()),
             new WaitCommand(1.0),
@@ -196,7 +196,7 @@ public class RobotContainer {
     NamedCommands.registerCommand(
         "Shoot Low",
         new SequentialCommandGroup(
-            shooter.setShooterVelocity(
+            shooter.setShooterVelocityCommand(
                 () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY,
                 () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY.unaryMinus()),
             new WaitCommand(1.0),
@@ -207,7 +207,7 @@ public class RobotContainer {
     NamedCommands.registerCommand(
         "Stop Motors",
         new ParallelCommandGroup(
-            shooter.setShooterVelocity(() -> RotationsPerSecond.of(0)),
+            shooter.setShooterVelocityCommand(() -> RotationsPerSecond.of(0)),
             indexer.setIndexerVelocity(() -> RotationsPerSecond.of(0)),
             groundIntake.setGroundIntakeRollerVelocity(() -> RotationsPerSecond.of(0))));
     NamedCommands.registerCommand(
@@ -267,7 +267,7 @@ public class RobotContainer {
     autoChooser.addOption(
         "No Leave High Outer 3",
         new SequentialCommandGroup(
-            shooter.setShooterVelocity(
+            shooter.setShooterVelocityCommand(
                 () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY,
                 () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY.unaryMinus()),
             new WaitCommand(1.0),
@@ -276,7 +276,7 @@ public class RobotContainer {
     autoChooser.addOption(
         "No Leave Low Outer 3",
         new SequentialCommandGroup(
-            shooter.setShooterVelocity(
+            shooter.setShooterVelocityCommand(
                 () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY,
                 () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY.unaryMinus()),
             new WaitCommand(1.0),
@@ -302,7 +302,7 @@ public class RobotContainer {
                 -driverController.getLeftX()
                     * Math.pow(Math.abs(driverController.getLeftX()), 1.2 - 1),
             () -> (0.5) * -driverController.getRightX()));
-    driverController.y().onTrue(drive.resetGyro());
+    // driverController.y().onTrue(drive.resetGyro());
     driverController
         .b()
         .onTrue(
@@ -332,6 +332,20 @@ public class RobotContainer {
                   RobotState.getInstance().updateRobotAction(RobotAction.kTeleopDefault);
                 }));
 
+    driverController
+        .y()
+        .onTrue(
+            new InstantCommand(
+                () -> {
+                  RobotState.getInstance().updateRobotAction(RobotAction.kAutoDriveAccelTest);
+                }));
+    driverController
+        .y()
+        .onFalse(
+            new InstantCommand(
+                () -> {
+                  RobotState.getInstance().updateRobotAction(RobotAction.kTeleopDefault);
+                }));
     // driver indexer controls
     driverController
         .rightBumper()
@@ -344,23 +358,23 @@ public class RobotContainer {
     driverController
         .rightTrigger()
         .whileTrue(
-            shooter.setShooterVelocity(
+            shooter.setShooterVelocityCommand(
                 () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY,
                 () ->
                     ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY
                         .unaryMinus())) // TODO: update value later to shoot in
         // high goal
-        .onFalse(shooter.setShooterVelocity(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
+        .onFalse(shooter.setShooterVelocityCommand(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
     driverController
         .leftTrigger()
         .whileTrue(
-            shooter.setShooterVelocity(
+            shooter.setShooterVelocityCommand(
                 () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY,
                 () ->
                     ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY
                         .unaryMinus())) // TODO: update value later to shoot in
         // low goal
-        .onFalse(shooter.setShooterVelocity(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
+        .onFalse(shooter.setShooterVelocityCommand(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
 
     // operator one button intake
     operatorController
@@ -375,14 +389,14 @@ public class RobotContainer {
                                 .times(-0.6))
                     .repeatedly(),
                 indexer.setIndexerVelocity(() -> IndexerConstants.INDEXER_INTAKE_VELOCITY),
-                shooter.setShooterVelocity(
+                shooter.setShooterVelocityCommand(
                     () -> ShooterConstants.SHOOTER_REVERSE_VELOCITY,
                     () -> ShooterConstants.SHOOTER_REVERSE_VELOCITY.unaryMinus())))
         .onFalse(
             new ParallelCommandGroup(
                 groundIntake.setGroundIntakeRollerVelocity(() -> RotationsPerSecond.of(0)),
                 indexer.setIndexerVelocity(() -> IndexerConstants.INDEXER_NO_VELOCITY),
-                shooter.setShooterVelocity(() -> ShooterConstants.SHOOTER_NO_VELOCITY)));
+                shooter.setShooterVelocityCommand(() -> ShooterConstants.SHOOTER_NO_VELOCITY)));
 
     // operator indexer controls
     operatorController
@@ -402,32 +416,32 @@ public class RobotContainer {
     operatorController
         .leftTrigger()
         .whileTrue(
-            shooter.setShooterVelocity(
+            shooter.setShooterVelocityCommand(
                 () -> ShooterConstants.SHOOTER_REVERSE_VELOCITY,
                 () ->
                     ShooterConstants.SHOOTER_REVERSE_VELOCITY
                         .unaryMinus())) // TODO: update value later
-        .onFalse(shooter.setShooterVelocity(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
+        .onFalse(shooter.setShooterVelocityCommand(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
     operatorController
         .rightTrigger()
         .whileTrue(
-            shooter.setShooterVelocity(
+            shooter.setShooterVelocityCommand(
                 () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY,
                 () ->
                     ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY
                         .unaryMinus())) // TODO: update value later to shoot in
         // high goal
-        .onFalse(shooter.setShooterVelocity(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
+        .onFalse(shooter.setShooterVelocityCommand(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
     operatorController
         .b()
         .whileTrue(
-            shooter.setShooterVelocity(
+            shooter.setShooterVelocityCommand(
                 () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY,
                 () ->
                     ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY
                         .unaryMinus())) // TODO: update value later to shoot in
         // low goal
-        .onFalse(shooter.setShooterVelocity(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
+        .onFalse(shooter.setShooterVelocityCommand(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
 
     // ground intake controls
     operatorController

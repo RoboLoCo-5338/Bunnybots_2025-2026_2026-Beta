@@ -1,10 +1,10 @@
 package frc.robot;
 
 import static edu.wpi.first.units.Units.Degrees;
-import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static edu.wpi.first.units.Units.Inches;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.Microseconds;
 import static edu.wpi.first.units.Units.Pounds;
 import static edu.wpi.first.units.Units.Radians;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
@@ -54,15 +54,12 @@ public class RobotState {
 
     kAutoScore,
     kAutoDriveTest,
+    kAutoShootAccelTest,
+    kAutoDriveAccelTest,
 
     kManualScore,
 
     kAutoDefault,
-    kAutoAutoScore,
-    kAutoLuniteIntaking,
-    kAutoLuniteLowGoal,
-    kAutoLuniteHighGoal,
-    kAutoDriveIntakeUp,
   }
 
   private SubsystemProfiles<RobotAction> m_profiles;
@@ -128,14 +125,16 @@ public class RobotState {
               ProjectileSpeedUtils.calcNecessaryWheelSpeed(
                   shooterVelocity,
                   ShooterConstants.ShooterSimConstants.SHOOTER_MOI,
-            Pounds.of(0.1),
+                  Pounds.of(0.2),
                   Inches.of(3.0 / 2));
           Logger.recordOutput(
               "Trajectory/ShooterRotationsPerSecond",
               shooterAngularVelocity.in(RotationsPerSecond));
-          m_shooter.setShooterVelocity(() -> shooterAngularVelocity);
+          m_shooter.setShooterVelocityCommand(() -> shooterAngularVelocity);
         });
     periodicHash.put(RobotAction.kAutoDriveTest, this::autoDriveTestPeriodic);
+    periodicHash.put(RobotAction.kAutoShootAccelTest, this::autoShooterAccelTest);
+    periodicHash.put(RobotAction.kAutoDriveAccelTest, this::autoDriveAccelTest);
     periodicHash.put(RobotAction.kAutoDefault, () -> {});
     // periodicHash.put(RobotAction.kLuniteLowGoal, this::luniteLowGoalPeriodic);
     // periodicHash.put(RobotAction.kLuniteHighGoal, this::luniteLowGoalPeriodic);
@@ -165,28 +164,17 @@ public class RobotState {
     m_threadPriorityTimer.start();
   }
 
+  Time actionStart;
+
   public void updateRobotAction(RobotAction action) {
     /*
      *  FRC team 422 MechTech Dragons - may end up using this code
      */
-    // DriveProfiles newDriveState = DriveProfiles.kDefault;
-
-    // switch (action) {
-    //   case kAutoDefault:
-    //     newDriveState = DriveProfiles.kAutoAlign;
-    //     break;
-    //   case kTeleopDefault:
-    //     newDriveState = DriveProfiles.kDefault;
-    //     break;
-    //   default:
-    //     break;
-    // }
-
-    // if (newDriveState != m_drive.getCurrentProfile()) {
-    //   m_drive.updateProfile(newDriveState);
-    // }
-
-    m_profiles.setCurrentProfile(action);
+    if (action != m_profiles.getCurrentProfile()) {
+      m_profiles.setCurrentProfile(action);
+      actionStart = Microseconds.of(HALUtil.getFPGATime());
+      lastPeriodic = Microseconds.of(0);
+    }
   }
 
   public static RobotState startInstance(
@@ -239,26 +227,118 @@ public class RobotState {
         ProjectileSpeedUtils.calcNecessaryWheelSpeed(
             shooterVelocity,
             ShooterConstants.ShooterSimConstants.SHOOTER_MOI,
-            Pounds.of(0.1),
+            Pounds.of(0.2),
             Inches.of(3.0 / 2));
     Logger.recordOutput(
         "DriveTest/ShooterRotationsPerSecond", shooterAngularVelocity.in(RotationsPerSecond));
-    m_shooter.setShooterVelocity(() -> {return shooterAngularVelocity;});
-    AngularVelocity azimuthSpeed =
-        RadiansPerSecond.of(
+    m_shooter.setShooterVelocityCommand(() -> shooterAngularVelocity, () -> shooterAngularVelocity);
+    Angle azimuthDiff =
+        Radians.of(
             (robotHeadingAzimuth.in(Radians) - m_drive.getPose().getRotation().getRadians()) * 1);
 
-    Logger.recordOutput("DriveTest/azimuthSpeed", azimuthSpeed.in(DegreesPerSecond));
-    if (azimuthSpeed.in(RadiansPerSecond) > m_drive.getMaxAngularSpeedRadPerSec()) {
+    Logger.recordOutput("DriveTest/azimuthDiff", azimuthDiff.in(Degrees));
+    if (azimuthDiff.div(Seconds.of(0.5)).in(RadiansPerSecond)
+        > m_drive.getMaxAngularSpeedRadPerSec()) {
       m_drive.runVelocity(
           new ChassisSpeeds(
               MetersPerSecond.of(0),
               MetersPerSecond.of(0),
               RadiansPerSecond.of(m_drive.getMaxAngularSpeedRadPerSec())));
+      Logger.recordOutput("DriveTest/AngularSpeed", m_drive.getMaxAngularSpeedRadPerSec());
     } else {
       m_drive.runVelocity(
-          new ChassisSpeeds(MetersPerSecond.of(0), MetersPerSecond.of(0), azimuthSpeed));
+          new ChassisSpeeds(
+              MetersPerSecond.of(0), MetersPerSecond.of(0), azimuthDiff.div(Seconds.of(0.5))));
+      Logger.recordOutput(
+          "DriveTest/azimuthDiff", azimuthDiff.div(Seconds.of(0.5)).in(RadiansPerSecond));
     }
+  }
+
+  Time lastPeriodic;
+
+  private double magicFunctionAccelTest(double t) {
+    /* shooterAccelTest will attempt to match x(t)=e^t */
+    return 10
+        + (t) * (t - 1.5) * (t - 4) * (t - 9) * (t - 11) * (t - 13) * (t - 14) * (t - 17) * (t - 19)
+            / 1000000.0;
+    // return Math.pow(Math.E, t - 5);
+  }
+
+  public void autoShooterAccelTest() {
+    Time now = Microseconds.of(HALUtil.getFPGATime());
+    Time dTime = now.minus(lastPeriodic);
+    Time t = now.minus(actionStart);
+    Logger.recordOutput("ShooterTest/t", t.in(Seconds));
+    AngularVelocity x = RadiansPerSecond.of(magicFunctionAccelTest(t.in(Seconds)));
+
+    Logger.recordOutput("ShooterTest/x", x.in(RadiansPerSecond));
+    AngularVelocity xIn = RadiansPerSecond.of(magicFunctionAccelTest(t.in(Seconds) + 0.1));
+    Logger.recordOutput("ShooterTest/xIn", xIn.in(RadiansPerSecond));
+    xIn = xIn.times(1.6454648659);
+    m_shooter.setShooterVelocity(xIn);
+    // x = x.times(1.5027290797);
+    // x = x.times(1.6201884787);
+    // x = x.times(1.6885619176);
+    // x = x.times(1.6338803120);
+
+    Logger.recordOutput(
+        "ShooterTest/dx",
+        magicFunctionAccelTest(t.in(Seconds))
+            - magicFunctionAccelTest((lastPeriodic.minus(actionStart)).in(Seconds)));
+
+    Logger.recordOutput("ShooterTest/dt", dTime.in(Seconds));
+    Logger.recordOutput(
+        "ShooterTest/dxdt",
+        (magicFunctionAccelTest(t.in(Seconds))
+                - magicFunctionAccelTest((lastPeriodic.minus(actionStart)).in(Seconds)))
+            / dTime.in(Seconds));
+
+    lastPeriodic = now;
+  }
+
+  private double magicFunctionDriveAccelTest(double t) {
+    /* shooterAccelTest will attempt to match x(t)=e^t */
+    t /= 5.0;
+    return ((t) * (t - 1.5) * (t - 4) * (t - 9) * (t - 11) * (t - 13) * (t - 14) * (t - 17)
+            * (t - 19) / 1000000.0)
+        / 0.8;
+    // return Math.pow(Math.E, t - 5);
+  }
+
+  public void autoDriveAccelTest() {
+    Time now = Microseconds.of(HALUtil.getFPGATime());
+    Time dTime = now.minus(lastPeriodic);
+    Time t = now.minus(actionStart);
+    Logger.recordOutput("DriveTest/t", t.in(Seconds));
+    AngularVelocity x = RadiansPerSecond.of(magicFunctionDriveAccelTest(t.in(Seconds)));
+
+    Logger.recordOutput("DriveTest/x", x.in(RadiansPerSecond));
+    AngularVelocity xIn = RadiansPerSecond.of(magicFunctionDriveAccelTest(t.in(Seconds) + 0.1));
+    // xIn = RadiansPerSecond.of();
+    Logger.recordOutput("DriveTest/xIn", xIn.in(RadiansPerSecond));
+    xIn = xIn.times(1 / 3.5857681131);
+    // x = x.times(1.5027290797);
+    // x = x.times(1.6201884787);
+    // x = x.times(1.6885619176);
+    // x = x.times(1.6338803120);
+    m_drive.runVelocity(
+        ChassisSpeeds.fromFieldRelativeSpeeds(
+            new ChassisSpeeds(MetersPerSecond.of(0.2), MetersPerSecond.of(1), xIn),
+            m_drive.getRotation()));
+
+    Logger.recordOutput(
+        "DriveTest/dx",
+        magicFunctionDriveAccelTest(t.in(Seconds))
+            - magicFunctionDriveAccelTest((lastPeriodic.minus(actionStart)).in(Seconds)));
+
+    Logger.recordOutput("DriveTest/dt", dTime.in(Seconds));
+    Logger.recordOutput(
+        "DriveTest/dxdt",
+        (magicFunctionDriveAccelTest(t.in(Seconds))
+                - magicFunctionDriveAccelTest((lastPeriodic.minus(actionStart)).in(Seconds)))
+            / dTime.in(Seconds));
+
+    lastPeriodic = now;
   }
 
   public void onEnable() {
