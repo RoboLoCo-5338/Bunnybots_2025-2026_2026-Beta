@@ -3,8 +3,8 @@ package frc.robot.subsystems.shooter;
 import static edu.wpi.first.units.Units.Amps;
 import static edu.wpi.first.units.Units.Celsius;
 import static edu.wpi.first.units.Units.Millimeters;
-import static edu.wpi.first.units.Units.RPM;
-import static edu.wpi.first.units.Units.Rotations;
+import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 import static edu.wpi.first.units.Units.Volts;
 
 import edu.wpi.first.units.measure.Angle;
@@ -19,8 +19,8 @@ public class ShooterIO {
 
   @AutoLog
   public static class ShooterIOInputs {
-    public Angle shooterPositionRads = Rotations.of(Double.NaN);
-    public AngularVelocity shooterVelocityRadPerSec = RPM.of(Double.NaN);
+    public Angle shooterPositionRads = Radians.of(Double.NaN);
+    public AngularVelocity shooterVelocityRadPerSec = RadiansPerSecond.of(Double.NaN);
     public Voltage shooterAppliedVolts = Volts.of(Double.NaN);
     public Current shooterCurrentAmps = Amps.of(Double.NaN);
     public boolean shooterConnected = false;

@@ -1,6 +1,6 @@
 package frc.robot.subsystems.shooter;
 
-import static edu.wpi.first.units.Units.RotationsPerSecond;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 import static edu.wpi.first.units.Units.Volts;
 
 import edu.wpi.first.units.measure.AngularVelocity;
@@ -75,7 +75,7 @@ public class Shooter extends SubsystemBase implements SysIdSubsystem {
    * @param velocity The velocity to set the shooter to in degrees per second.
    * @return A command that sets the shooter to the given velocity.
    */
-  public Command setShooterVelocity(Supplier<AngularVelocity> velocity) {
+  public Command setShooterVelocityCommand(Supplier<AngularVelocity> velocity) {
     return new InstantCommand(
             () -> {
               io1.setShooterVelocity(velocity.get());
@@ -85,7 +85,12 @@ public class Shooter extends SubsystemBase implements SysIdSubsystem {
         .withName("Set Shooter Velocity");
   }
 
-  public Command setShooterVelocity(
+  public void setShooterVelocity(AngularVelocity velocity) {
+    io1.setShooterVelocity(velocity);
+    io2.setShooterVelocity(velocity);
+  }
+
+  public Command setShooterVelocityCommand(
       Supplier<AngularVelocity> velocity1, Supplier<AngularVelocity> velocity2) {
     return new InstantCommand(
             () -> {
@@ -108,10 +113,9 @@ public class Shooter extends SubsystemBase implements SysIdSubsystem {
                 .until(
                     () ->
                         inputs1.shooterVelocityRadPerSec.isNear(
-                                RotationsPerSecond.ofBaseUnits(0), ShooterConstants.RESET_TOLERANCE)
+                                RadiansPerSecond.ofBaseUnits(0), ShooterConstants.RESET_TOLERANCE)
                             && inputs2.shooterVelocityRadPerSec.isNear(
-                                RotationsPerSecond.ofBaseUnits(0),
-                                ShooterConstants.RESET_TOLERANCE)),
+                                RadiansPerSecond.ofBaseUnits(0), ShooterConstants.RESET_TOLERANCE)),
             Commands.runOnce(
                 () -> {
                   io1.shooterOpenLoop(Volts.of(0));
