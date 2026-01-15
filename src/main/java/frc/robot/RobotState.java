@@ -34,7 +34,7 @@ import frc.robot.subsystems.shooter.ShooterConstants;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.util.ProjectileSpeedUtils;
 import frc.robot.util.ProjectileTrajectoryUtils;
-import frc.robot.util.ProjectileTrajectoryUtils.TrajectorySolution;
+import frc.robot.util.ProjectileTrajectoryUtils.FixedTrajectorySolution;
 import frc.robot.util.SubsystemProfiles;
 import java.util.HashMap;
 import java.util.Map;
@@ -229,7 +229,7 @@ public class RobotState {
         shooterOffset.plus(new Translation3d(fieldPos.getX(), fieldPos.getY(), 0));
     targetDisplacement = new Translation3d(3, 4, 2);
 
-    TrajectorySolution solution =
+    FixedTrajectorySolution solution =
         ProjectileTrajectoryUtils.calcFiringSolution(
             MetersPerSecond.of(0), MetersPerSecond.of(0), targetDisplacement, shooterAltitude);
 

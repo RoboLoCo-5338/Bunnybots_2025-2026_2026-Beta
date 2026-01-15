@@ -304,6 +304,20 @@ public class RobotContainer {
             () -> (0.5) * -driverController.getRightX()));
     // driverController.y().onTrue(drive.resetGyro());
     driverController
+        .a()
+        .onTrue(
+            new InstantCommand(
+                () -> {
+                  RobotState.getInstance().updateRobotAction(RobotAction.kAutoShootAccelTest);
+                }));
+    driverController
+        .a()
+        .onFalse(
+            new InstantCommand(
+                () -> {
+                  RobotState.getInstance().updateRobotAction(RobotAction.kTeleopDefault);
+                }));
+    driverController
         .b()
         .onTrue(
             new InstantCommand(

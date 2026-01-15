@@ -11,11 +11,11 @@ import edu.wpi.first.units.measure.*;
 import org.littletonrobotics.junction.Logger;
 
 public class ProjectileTrajectoryUtils {
-  public static class TrajectorySolution {
+  public static class FixedTrajectorySolution {
     public Angle azimuth;
     public LinearVelocity shooterVelocity;
 
-    public TrajectorySolution(Angle azimuth, LinearVelocity shooterVelocity) {
+    public FixedTrajectorySolution(Angle azimuth, LinearVelocity shooterVelocity) {
       this.azimuth = azimuth;
       this.shooterVelocity = shooterVelocity;
     }
@@ -34,7 +34,7 @@ public class ProjectileTrajectoryUtils {
    * @param shooterAltitude Angle of the fixed shooter from horizontal
    * @return Time of flight for the projectile from launch to target
    */
-  public static TrajectorySolution calcFiringSolution(
+  public static FixedTrajectorySolution calcFiringSolution(
       LinearVelocity botVelocityX,
       LinearVelocity botVelocityY,
       Translation3d targetPos,
@@ -44,7 +44,7 @@ public class ProjectileTrajectoryUtils {
     Angle azimuth =
         calcRobotHeadingAzimuth(
             botVelocityX, botVelocityY, timeOfFlight, shooterVelocity, targetPos, shooterAltitude);
-    return new TrajectorySolution(azimuth, shooterVelocity);
+    return new FixedTrajectorySolution(azimuth, shooterVelocity);
   }
 
   /**

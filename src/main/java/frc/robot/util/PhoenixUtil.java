@@ -32,7 +32,6 @@ import java.util.function.Supplier;
 import org.ironmaple.simulation.SimulatedArena;
 import org.ironmaple.simulation.motorsims.SimulatedBattery;
 import org.ironmaple.simulation.motorsims.SimulatedMotorController;
-import org.littletonrobotics.junction.Logger;
 
 public final class PhoenixUtil {
   /** Attempts to run the command until no error is produced. */
