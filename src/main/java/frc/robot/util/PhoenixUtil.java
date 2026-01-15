@@ -14,7 +14,6 @@
 package frc.robot.util;
 
 import static edu.wpi.first.units.Units.*;
-import static edu.wpi.first.units.Units.Seconds;
 
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.configs.Slot0Configs;
@@ -33,6 +32,7 @@ import java.util.function.Supplier;
 import org.ironmaple.simulation.SimulatedArena;
 import org.ironmaple.simulation.motorsims.SimulatedBattery;
 import org.ironmaple.simulation.motorsims.SimulatedMotorController;
+import org.littletonrobotics.junction.Logger;
 
 public final class PhoenixUtil {
   /** Attempts to run the command until no error is produced. */
@@ -141,10 +141,9 @@ public final class PhoenixUtil {
             new Slot0Configs()
                 .withKP(70)
                 .withKI(0)
-                .withKD(4.5)
-                .withKS(0)
-                .withKV(1.91)
-                .withKA(0)
+                .withKD(0)
+                .withKS(0.1703)
+                .withKV(0.68808)
                 .withStaticFeedforwardSign(StaticFeedforwardSignValue.UseClosedLoopSign))
         .withSteerMotorGearRatio(16.0)
         // Adjust friction voltages

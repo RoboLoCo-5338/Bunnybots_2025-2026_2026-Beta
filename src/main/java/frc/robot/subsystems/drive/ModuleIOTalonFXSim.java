@@ -20,6 +20,7 @@ import frc.robot.subsystems.drive.Drive.DrivePIDTunableNumbers;
 import frc.robot.util.PhoenixUtil;
 import java.util.Arrays;
 import org.ironmaple.simulation.drivesims.SwerveModuleSimulation;
+import org.littletonrobotics.junction.Logger;
 
 /**
  * Physics sim implementation of module IO. The sim models are configured using a set of module

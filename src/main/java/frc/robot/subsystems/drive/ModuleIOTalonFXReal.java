@@ -51,7 +51,7 @@ public class ModuleIOTalonFXReal extends ModuleIOTalonFX {
     inputs.odometryDrivePositionsRad =
         drivePositionQueue.stream()
             .mapToDouble(Units::rotationsToRadians)
-            .map((position) -> position / constants.DriveMotorGearRatio)
+            .map((position) -> position)
             .toArray();
     inputs.odometryTurnPositions =
         turnPositionQueue.stream().map(Rotation2d::fromRotations).toArray(Rotation2d[]::new);
