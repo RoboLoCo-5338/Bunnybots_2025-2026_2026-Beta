@@ -5,6 +5,7 @@ import static edu.wpi.first.units.Units.Inches;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.Microseconds;
+import static edu.wpi.first.units.Units.Milliseconds;
 import static edu.wpi.first.units.Units.Pounds;
 import static edu.wpi.first.units.Units.Radians;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
@@ -18,6 +19,7 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Time;
 import edu.wpi.first.wpilibj.Threads;
@@ -32,6 +34,7 @@ import frc.robot.subsystems.shooter.ShooterConstants;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.util.ProjectileSpeedUtils;
 import frc.robot.util.ProjectileTrajectoryUtils;
+import frc.robot.util.ProjectileTrajectoryUtils.TrajectorySolution;
 import frc.robot.util.SubsystemProfiles;
 import java.util.HashMap;
 import java.util.Map;
@@ -97,7 +100,15 @@ public class RobotState {
     m_vision = vision;
 
     Map<RobotAction, Runnable> periodicHash = new HashMap<>();
-    periodicHash.put(RobotAction.kTeleopDefault, () -> {});
+    periodicHash.put(
+        RobotAction.kTeleopDefault,
+        () -> {
+          // ProjectileTrajectoryUtils.testDerivative(
+          //     MetersPerSecond.of(1),
+          //     MetersPerSecond.of(0),
+          //     new Translation3d(3, 4, 2.0),
+          //     Degrees.of(60));
+        });
     periodicHash.put(
         RobotAction.kAutoScore,
         () -> {
@@ -197,6 +208,17 @@ public class RobotState {
       new Translation3d(0, -Inches.of(0.1956095).in(Meters), Inches.of(16.081505).in(Meters));
   private final Angle shooterAltitude = Degrees.of(60);
 
+  private AngularVelocity lastOmega = RadiansPerSecond.of(0);
+  private int numLagFrames = 3;
+
+  private double deadzone(double input, double zone) {
+    if (Math.abs(input) < zone) {
+      return 0.0;
+    } else {
+      return input;
+    }
+  }
+
   public void autoDriveTestPeriodic() {
     double start = HALUtil.getFPGATime();
 
@@ -206,53 +228,45 @@ public class RobotState {
     Translation3d targetDisplacement =
         shooterOffset.plus(new Translation3d(fieldPos.getX(), fieldPos.getY(), 0));
     targetDisplacement = new Translation3d(3, 4, 2);
-    Time timeOfFlight =
-        ProjectileTrajectoryUtils.calcTargetTime(
+
+    TrajectorySolution solution =
+        ProjectileTrajectoryUtils.calcFiringSolution(
             MetersPerSecond.of(0), MetersPerSecond.of(0), targetDisplacement, shooterAltitude);
-    Logger.recordOutput("DriveTest/Trajectory/Time", timeOfFlight.in(Seconds));
-    LinearVelocity shooterVelocity =
-        ProjectileTrajectoryUtils.calcShooterVelocity(
-            timeOfFlight, new Translation3d(3, 4, 2.0), Degrees.of(60));
-    Logger.recordOutput("DriveTest/Trajectory/Velocity", shooterVelocity.in(MetersPerSecond));
-    Angle robotHeadingAzimuth =
-        ProjectileTrajectoryUtils.calcRobotHeadingAzimuth(
-            MetersPerSecond.of(0),
-            MetersPerSecond.of(0),
-            timeOfFlight,
-            shooterVelocity,
-            targetDisplacement,
-            shooterAltitude);
-    Logger.recordOutput("DriveTest/Trajectory/Azimuth", robotHeadingAzimuth.in(Degrees));
 
     AngularVelocity shooterAngularVelocity =
         ProjectileSpeedUtils.calcNecessaryWheelSpeed(
-            shooterVelocity,
+            solution.shooterVelocity,
             ShooterConstants.ShooterSimConstants.SHOOTER_MOI,
             Pounds.of(0.2),
             Inches.of(3.0 / 2));
     Logger.recordOutput(
         "DriveTest/ShooterRotationsPerSecond", shooterAngularVelocity.in(RotationsPerSecond));
     m_shooter.setShooterVelocityCommand(() -> shooterAngularVelocity, () -> shooterAngularVelocity);
+
     Angle azimuthDiff =
+        Radians.of((solution.azimuth.in(Radians) - m_drive.getPose().getRotation().getRadians()));
+
+    AngularVelocity currentOmega =
+        RadiansPerSecond.of(m_drive.getChassisSpeeds().omegaRadiansPerSecond);
+    Angle azimuthDiffFuture =
         Radians.of(
-            (robotHeadingAzimuth.in(Radians) - m_drive.getPose().getRotation().getRadians()) * 1);
+            deadzone(
+                solution.azimuth.in(Radians)
+                    - (m_drive.getPose().getRotation().getRadians()
+                        + currentOmega.times(Milliseconds.of(20).times(numLagFrames)).in(Radians)),
+                0.05));
+
+    AngularVelocity omega = azimuthDiffFuture.div(Milliseconds.of(20).times(numLagFrames));
+    if (Math.abs(omega.in(RadiansPerSecond)) > m_drive.getMaxAngularSpeedRadPerSec()) {
+      omega =
+          RadiansPerSecond.of(
+              Math.copySign(m_drive.getMaxAngularSpeedRadPerSec(), omega.in(RadiansPerSecond)));
+    }
+    m_drive.runVelocity(new ChassisSpeeds(MetersPerSecond.of(0), MetersPerSecond.of(0), omega));
+    Logger.recordOutput("DriveTest/AngularSpeed", omega.in(RadiansPerSecond));
+    lastOmega = omega;
 
     Logger.recordOutput("DriveTest/azimuthDiff", azimuthDiff.in(Degrees));
-    if (azimuthDiff.div(Seconds.of(0.5)).in(RadiansPerSecond)
-        > m_drive.getMaxAngularSpeedRadPerSec()) {
-      m_drive.runVelocity(
-          new ChassisSpeeds(
-              MetersPerSecond.of(0),
-              MetersPerSecond.of(0),
-              RadiansPerSecond.of(m_drive.getMaxAngularSpeedRadPerSec())));
-      Logger.recordOutput("DriveTest/AngularSpeed", m_drive.getMaxAngularSpeedRadPerSec());
-    } else {
-      m_drive.runVelocity(
-          new ChassisSpeeds(
-              MetersPerSecond.of(0), MetersPerSecond.of(0), azimuthDiff.div(Seconds.of(0.5))));
-      Logger.recordOutput(
-          "DriveTest/azimuthDiff", azimuthDiff.div(Seconds.of(0.5)).in(RadiansPerSecond));
-    }
   }
 
   Time lastPeriodic;
@@ -302,7 +316,7 @@ public class RobotState {
     t /= 5.0;
     return ((t) * (t - 1.5) * (t - 4) * (t - 9) * (t - 11) * (t - 13) * (t - 14) * (t - 17)
             * (t - 19) / 1000000.0)
-        / 20.0;
+        / 5.0;
     // return Math.pow(Math.E, t - 5);
   }
 
@@ -327,7 +341,24 @@ public class RobotState {
     ratio = Math.max(0, ratio); // Ensure non-negative
     return MetersPerSecond.of(3 * ratio);
   }
-double startY = 0.442189;
+
+  private Distance wheelBaseRadius = Meters.of(m_drive.DRIVE_BASE_RADIUS);
+
+  /**
+   * Given an angular velocity omega and an offsetY (lateral offset from the robot's center),
+   * calculates the tangential linear velocity at that offset. Useful for when the shooter is at one
+   * end of the robot, and we want to rotate around the center of the shooter.
+   *
+   * @param omega The angular velocity of the robot.
+   * @param offsetY The lateral offset from the robot's center to the point of interest.
+   * @return The tangential linear velocity at the given offset.
+   */
+  private LinearVelocity tangentialVelocity(AngularVelocity omega, Distance offsetY) {
+    return MetersPerSecond.of(offsetY.in(Meters) * omega.in(RadiansPerSecond));
+  }
+
+  double startY = 0.442189;
+
   public void autoDriveAccelTest() {
     Time now = Microseconds.of(HALUtil.getFPGATime());
     Time dTime = now.minus(lastPeriodic);
@@ -345,10 +376,10 @@ double startY = 0.442189;
     // x = x.times(1.6885619176);
     // x = x.times(1.6338803120);
 
-    double diff = startY-m_drive.getPose().getTranslation().getY();
+    double diff = startY - m_drive.getPose().getTranslation().getY();
     m_drive.runVelocityDangerous(
         ChassisSpeeds.fromFieldRelativeSpeeds(
-            new ChassisSpeeds(MetersPerSecond.of(1), MetersPerSecond.of(diff/2), xIn),
+            new ChassisSpeeds(MetersPerSecond.of(2), MetersPerSecond.of(diff / 2), xIn),
             m_drive
                 .getRotation()
                 .plus(

@@ -3,6 +3,7 @@ package frc.robot.util;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 import static edu.wpi.first.units.Units.Seconds;
 
 import edu.wpi.first.math.geometry.Translation3d;
@@ -10,7 +11,41 @@ import edu.wpi.first.units.measure.*;
 import org.littletonrobotics.junction.Logger;
 
 public class ProjectileTrajectoryUtils {
+  public static class TrajectorySolution {
+    public Angle azimuth;
+    public LinearVelocity shooterVelocity;
+
+    public TrajectorySolution(Angle azimuth, LinearVelocity shooterVelocity) {
+      this.azimuth = azimuth;
+      this.shooterVelocity = shooterVelocity;
+    }
+  }
+
   private static final LinearAcceleration GRAVITY = MetersPerSecondPerSecond.of(9.81);
+
+  /**
+   * Calculates the Robot firing solution
+   *
+   * @param botVelocityX X-velocity of the Robot, FOC, in meters
+   * @param botVelocityY Y-velocity of the Robot, FOC, in meters
+   * @param timeOfFlight duration of the delta-t from launch to target
+   * @param shooterVelocity exit velocity from the shooter
+   * @param targetPos 3d displacement of the target, FOC, in meters
+   * @param shooterAltitude Angle of the fixed shooter from horizontal
+   * @return Time of flight for the projectile from launch to target
+   */
+  public static TrajectorySolution calcFiringSolution(
+      LinearVelocity botVelocityX,
+      LinearVelocity botVelocityY,
+      Translation3d targetPos,
+      Angle shooterAltitude) {
+    Time timeOfFlight = calcTargetTime(botVelocityX, botVelocityY, targetPos, shooterAltitude);
+    LinearVelocity shooterVelocity = calcShooterVelocity(timeOfFlight, targetPos, shooterAltitude);
+    Angle azimuth =
+        calcRobotHeadingAzimuth(
+            botVelocityX, botVelocityY, timeOfFlight, shooterVelocity, targetPos, shooterAltitude);
+    return new TrajectorySolution(azimuth, shooterVelocity);
+  }
 
   /**
    * Calculates the Robot heading azimuth
@@ -40,6 +75,21 @@ public class ProjectileTrajectoryUtils {
     return Radians.of(Math.atan2(sinTheta, cosTheta));
   }
 
+  public static AngularVelocity calcRobotAngularVelocity(
+      LinearVelocity botVelocityX,
+      LinearVelocity botVelocityY,
+      Time timeOfFlight,
+      double dfdt,
+      Translation3d targetPos,
+      Angle shooterAltitude) {
+    double g = GRAVITY.in(MetersPerSecondPerSecond);
+    double term1 = g / (2 * Math.sin(shooterAltitude.in(Radians)));
+    double term2 =
+        -targetPos.getZ()
+            / (Math.pow(timeOfFlight.in(Seconds), 2.0) * Math.sin(shooterAltitude.in(Radians)));
+    return RadiansPerSecond.of(dfdt * (term1 + term2));
+  }
+
   /**
    * Calculates the Shooter exit velocity for the projectile
    *
@@ -58,6 +108,16 @@ public class ProjectileTrajectoryUtils {
     Logger.recordOutput("Trajectory/VelocitySolution/numerator", numerator);
     Logger.recordOutput("Trajectory/VelocitySolution/denominator", denominator);
     return MetersPerSecond.of(numerator / denominator);
+  }
+
+  public static LinearAcceleration calcShooterAcceleration(
+      Time timeOfFlight, double dfdt, Translation3d targetPos, Angle shooterAltitude) {
+    double g = GRAVITY.in(MetersPerSecondPerSecond);
+    double term1 = g / (2 * Math.sin(shooterAltitude.in(Radians)));
+    double term2 =
+        -targetPos.getZ()
+            / (Math.pow(timeOfFlight.in(Seconds), 2.0) * Math.sin(shooterAltitude.in(Radians)));
+    return MetersPerSecondPerSecond.of(dfdt * (term1 + term2));
   }
 
   /**
@@ -106,9 +166,44 @@ public class ProjectileTrajectoryUtils {
     else return (-b - Math.sqrt(b * b - 4 * a * c)) / (2 * a);
   }
 
+  public static double calcDfdt(
+      LinearVelocity botVelocityX,
+      LinearVelocity botVelocityY,
+      Translation3d targetPos,
+      Angle shooterAltitude) {
+    double g = GRAVITY.in(MetersPerSecondPerSecond);
+    double cos2a = Math.pow(Math.cos(shooterAltitude.in(Radians)), 2);
+    double sin2a = Math.pow(Math.sin(shooterAltitude.in(Radians)), 2);
+    double x = targetPos.getX();
+    double y = targetPos.getY();
+    double v_x = botVelocityX.in(MetersPerSecond);
+    double v_y = botVelocityY.in(MetersPerSecond);
+    double a = 0.25 * Math.pow(g, 2) * cos2a;
+    double b = g * targetPos.getZ() * cos2a - v_x * v_x * sin2a - v_y * v_y * sin2a;
+    double c = 2.0 * (x * v_x + y * v_y) * sin2a;
+    double d = Math.pow(targetPos.getZ(), 2) * cos2a - x * x * sin2a - y * y * sin2a;
+
+    double accel_x = 0;
+    double accel_y = 0;
+    double bPrime = -2 * sin2a * v_x - 2 * sin2a * v_y;
+    double cPrime = 2 * sin2a * (v_x * v_x + accel_x * x + v_y * v_y + accel_y * y);
+    double dPrime = -2 * sin2a * x * v_x - 2 * sin2a * y * v_y;
+    return dfdtDepressedQuarticRealHigh(a, b, c, d, bPrime, cPrime, dPrime);
+  }
+
   public static double dfdtDepressedQuarticRealHigh(
-      double a, double b, double b_, double c, double c_, double d, double d_) {
-    return 0;
+      double a, double b, double c, double d, double bPrime, double cPrime, double dPrime) {
+    double h = 1e-4;
+    double root1 = solveDepressedQuarticRealHigh(a, b, c, d);
+    double root2 = solveDepressedQuarticRealHigh(a, b + bPrime * h, c + cPrime * h, d + dPrime * h);
+    double numericalDerivative = (root2 - root1) / h;
+    Logger.recordOutput("Trajectory/Numerical Derivative e-4: ", numericalDerivative);
+    h = 1e-6;
+    root2 = solveDepressedQuarticRealHigh(a, b + bPrime * h, c + cPrime * h, d + dPrime * h);
+    numericalDerivative = (root2 - root1) / h;
+    Logger.recordOutput("Trajectory/Numerical Derivative e-6: ", numericalDerivative);
+    double dfdt = numericalDerivative;
+    return dfdt;
   }
 
   public static double solveDepressedQuarticRealHigh(double a, double b, double c, double d) {
