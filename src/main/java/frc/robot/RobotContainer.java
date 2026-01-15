@@ -441,7 +441,6 @@ public class RobotContainer {
     Logger.recordOutput(
         "FieldSimulation/RobotPosition", driveSimulation.getSimulatedDriveTrainPose());
     Logger.recordOutput(
-    "FieldSimulation/Lunites",
-    SimulatedArena.getInstance().getGamePiecesArrayByType("Lunite"));
+        "FieldSimulation/Lunites", SimulatedArena.getInstance().getGamePiecesArrayByType("Lunite"));
   }
 }
