@@ -450,9 +450,9 @@ public class RobotContainer {
         .b()
         .whileTrue(
             shooter.setShooterVelocityCommand(
-                () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY,
+                () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY,
                 () ->
-                    ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY
+                    ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY
                         .unaryMinus())) // TODO: update value later to shoot in
         // low goal
         .onFalse(shooter.setShooterVelocityCommand(() -> ShooterConstants.SHOOTER_NO_VELOCITY));

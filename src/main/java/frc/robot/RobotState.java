@@ -142,7 +142,7 @@ public class RobotState {
           Logger.recordOutput(
               "Trajectory/ShooterRotationsPerSecond",
               shooterAngularVelocity.in(RotationsPerSecond));
-          m_shooter.setShooterVelocityCommand(() -> shooterAngularVelocity);
+          m_shooter.setShooterVelocity(shooterAngularVelocity);
         });
     periodicHash.put(RobotAction.kAutoDriveTest, this::autoDriveTestPeriodic);
     periodicHash.put(RobotAction.kAutoShootAccelTest, this::autoShooterAccelTest);
