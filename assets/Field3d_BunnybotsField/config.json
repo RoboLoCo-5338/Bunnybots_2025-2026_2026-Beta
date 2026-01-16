@@ -1,0 +1,42 @@
+{
+  "name": "Bunnybots Field",
+  "isFTC": false,
+  "coordinateSystem": "wall-blue",
+  "defaultOrigin": "blue",
+  "rotations": [
+    {
+      "axis": "x",
+      "degrees": 90
+    },
+    {
+      "axis": "z",
+      "degrees": 270
+    }
+  ],
+  "widthInches": 648,
+  "heightInches": 324,
+  "gamePieces": [
+    {
+      "name": "Lunite",
+      "rotations": [
+        {
+          "axis": "x",
+          "degrees": 90
+        }
+      ],
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "stagedObjects": [
+        "Lunite",
+        "Lunite_1",
+        "Lunite_2",
+        "Lunite_3",
+        "Lunite_4",
+        "Lunite_5"
+      ]
+    }
+  ]
+}

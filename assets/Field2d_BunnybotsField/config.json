@@ -1,0 +1,15 @@
+{
+  "name": "Bunnybots Field",
+  "isFTC": false,
+  "coordinateSystem": "wall-blue",
+  "topLeft": [
+    69,
+    48
+  ],
+  "bottomRight": [
+    1523,
+    775
+  ],
+  "widthInches": 648,
+  "heightInches": 324
+}
