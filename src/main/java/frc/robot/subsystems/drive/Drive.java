@@ -88,8 +88,7 @@ public class Drive extends SubsystemBase
               TunerConstants.FrontLeft.WheelRadius,
               TunerConstants.kSpeedAt12Volts.in(MetersPerSecond),
               DriveConstants.WHEEL_COF,
-              DCMotor.getKrakenX60Foc(1)
-                  .withReduction(TunerConstants.FrontLeft.DriveMotorGearRatio),
+              DCMotor.getFalcon500(1).withReduction(TunerConstants.FrontLeft.DriveMotorGearRatio),
               TunerConstants.FrontLeft.SlipCurrent,
               1),
           getModuleTranslations());
@@ -382,7 +381,7 @@ public class Drive extends SubsystemBase
 
   /** Returns the measured chassis speeds of the robot. */
   @AutoLogOutput(key = "SwerveChassisSpeeds/Measured")
-  private ChassisSpeeds getChassisSpeeds() {
+  public ChassisSpeeds getChassisSpeeds() {
     return kinematics.toChassisSpeeds(getModuleStates());
   }
 
