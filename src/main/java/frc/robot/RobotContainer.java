@@ -14,6 +14,7 @@
 package frc.robot;
 
 import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.RPM;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static edu.wpi.first.units.Units.Volts;
@@ -22,6 +23,7 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
@@ -29,8 +31,8 @@ import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.WaitUntilCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import frc.robot.RobotState.RobotAction;
 import frc.robot.commands.DriveCommands;
+import frc.robot.commands.TestCommands;
 import frc.robot.generated.TunerConstants;
 import frc.robot.sim.MechanismPoseLogger;
 import frc.robot.sim.SimMechanism;
@@ -302,64 +304,12 @@ public class RobotContainer {
                 -driverController.getLeftX()
                     * Math.pow(Math.abs(driverController.getLeftX()), 1.2 - 1),
             () -> (0.5) * -driverController.getRightX()));
-    // driverController.y().onTrue(drive.resetGyro());
-    driverController
-        .a()
-        .onTrue(
-            new InstantCommand(
-                () -> {
-                  RobotState.getInstance().updateRobotAction(RobotAction.kAutoShootAccelTest);
-                }));
-    driverController
-        .a()
-        .onFalse(
-            new InstantCommand(
-                () -> {
-                  RobotState.getInstance().updateRobotAction(RobotAction.kTeleopDefault);
-                }));
-    driverController
-        .b()
-        .onTrue(
-            new InstantCommand(
-                () -> {
-                  RobotState.getInstance().updateRobotAction(RobotAction.kAutoScore);
-                }));
-    driverController
-        .b()
-        .onFalse(
-            new InstantCommand(
-                () -> {
-                  RobotState.getInstance().updateRobotAction(RobotAction.kTeleopDefault);
-                }));
-    driverController
-        .x()
-        .onTrue(
-            new InstantCommand(
-                () -> {
-                  RobotState.getInstance().updateRobotAction(RobotAction.kAutoDriveTest);
-                }));
-    driverController
-        .x()
-        .onFalse(
-            new InstantCommand(
-                () -> {
-                  RobotState.getInstance().updateRobotAction(RobotAction.kTeleopDefault);
-                }));
+    driverController.y().onTrue(drive.resetGyro());
 
+    
     driverController
-        .y()
-        .onTrue(
-            new InstantCommand(
-                () -> {
-                  RobotState.getInstance().updateRobotAction(RobotAction.kAutoDriveAccelTest);
-                }));
-    driverController
-        .y()
-        .onFalse(
-            new InstantCommand(
-                () -> {
-                  RobotState.getInstance().updateRobotAction(RobotAction.kTeleopDefault);
-                }));
+        .a().whileTrue(TestCommands.testAutoAlign(drive, shooter));
+
     // driver indexer controls
     driverController
         .rightBumper()

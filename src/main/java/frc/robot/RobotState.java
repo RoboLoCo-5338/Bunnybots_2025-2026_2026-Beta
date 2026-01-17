@@ -1,6 +1,7 @@
 package frc.robot;
 
 import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.Grams;
 import static edu.wpi.first.units.Units.Inches;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
@@ -137,7 +138,7 @@ public class RobotState {
               ProjectileSpeedUtils.calcNecessaryWheelSpeed(
                   shooterVelocity,
                   ShooterConstants.ShooterSimConstants.SHOOTER_MOI,
-                  Pounds.of(0.2),
+                  Grams.of(69.1920),
                   Inches.of(3.0 / 2));
           Logger.recordOutput(
               "Trajectory/ShooterRotationsPerSecond",
@@ -241,7 +242,7 @@ public class RobotState {
             Inches.of(3.0 / 2));
     Logger.recordOutput(
         "DriveTest/ShooterRotationsPerSecond", shooterAngularVelocity.in(RotationsPerSecond));
-    m_shooter.setShooterVelocityCommand(() -> shooterAngularVelocity, () -> shooterAngularVelocity);
+    m_shooter.setShooterVelocity(shooterAngularVelocity);
 
     Angle azimuthDiff =
         Radians.of((solution.azimuth.in(Radians) - m_drive.getPose().getRotation().getRadians()));
