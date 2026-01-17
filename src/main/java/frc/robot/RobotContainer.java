@@ -326,14 +326,12 @@ public class RobotContainer {
             .add("Ki", 0.001) // Key "Ki", default 0.001
             .withWidget("NumberSlider")
             .getEntry();
-    kShooterEntry =
-        tuningTab
-            .add("Kshooter", 5.125)
-            .withWidget("NumberSlider")
-            .getEntry();
+    kShooterEntry = tuningTab.add("Kshooter", 5.125).withWidget("NumberSlider").getEntry();
     kDisplacementXEntry =
         tuningTab
-            .add("displacementX", Inches.of(16+22.2).in(Meters)) // bumper is 16, width of hub is 44.4
+            .add(
+                "displacementX",
+                Inches.of(16 + 22.2).in(Meters)) // bumper is 16, width of hub is 44.4
             .withWidget("NumberSlider")
             .getEntry();
   }
@@ -353,7 +351,8 @@ public class RobotContainer {
 
   public double getDisplacementX() {
     Logger.recordOutput("displacementX", kDisplacementXEntry.getDouble(67));
-    return kDisplacementXEntry.getDouble(Inches.of(16+22.2).in(Meters)); // bumper is 16, width of hub is 44.4
+    return kDisplacementXEntry.getDouble(
+        Inches.of(16 + 22.2).in(Meters)); // bumper is 16, width of hub is 44.4
   }
 
   private static Translation3d hubLocation = new Translation3d(0, 0, 2);
@@ -386,14 +385,17 @@ public class RobotContainer {
             () -> (0.5) * -driverController.getRightX()));
     driverController.y().onTrue(drive.resetGyro());
 
-
-    
     driverController
         .b()
-        .onTrue(new InstantCommand(()->{
-
-            hubLocation = new Translation3d(drive.getPose().getX() + getDisplacementX(), drive.getPose().getY(), (2.03 + 1.52) / 2);
-        }));
+        .onTrue(
+            new InstantCommand(
+                () -> {
+                  hubLocation =
+                      new Translation3d(
+                          drive.getPose().getX() + getDisplacementX(),
+                          drive.getPose().getY(),
+                          (2.03 + 1.52) / 2);
+                }));
 
     driverController
         .a()
@@ -406,12 +408,14 @@ public class RobotContainer {
                   // velocity,
                   // capping actual acceleration & angular acceleration by computed max values
                   Translation2d fieldPos = drive.getPose().getTranslation();
-                  Translation3d targetDisplacement = hubLocation.minus(
-                      shooterOffset.plus(new Translation3d(fieldPos.getX(), fieldPos.getY(), 0)));
-                      // lunar converter 152cm bottom - 203cm top
-                    // targetDisplacement =
-                    //     new Translation3d(-getDisplacementX(), 0, (2.03 + 1.52) / 2)
-                    //         .minus(shooterOffset);
+                  Translation3d targetDisplacement =
+                      hubLocation.minus(
+                          shooterOffset.plus(
+                              new Translation3d(fieldPos.getX(), fieldPos.getY(), 0)));
+                  // lunar converter 152cm bottom - 203cm top
+                  // targetDisplacement =
+                  //     new Translation3d(-getDisplacementX(), 0, (2.03 + 1.52) / 2)
+                  //         .minus(shooterOffset);
 
                   FixedTrajectorySolution solution =
                       ProjectileTrajectoryUtils.calcFiringSolution(
