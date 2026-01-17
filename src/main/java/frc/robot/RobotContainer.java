@@ -29,6 +29,7 @@ import com.pathplanner.lib.auto.NamedCommands;
 import edu.wpi.first.hal.HALUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.networktables.GenericEntry;
@@ -38,6 +39,7 @@ import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
@@ -354,7 +356,7 @@ public class RobotContainer {
     return kDisplacementXEntry.getDouble(2.0);
   }
 
-  private static final Translation3d hubLocation = new Translation3d(0, 0, 2);
+  private static Translation3d hubLocation = new Translation3d(0, 0, 2);
   private static final Translation3d shooterOffset =
       new Translation3d(-Inches.of(0.1956095).in(Meters), 0, Inches.of(16.081505).in(Meters));
   private static final Angle shooterAltitude = Degrees.of(50);
@@ -384,6 +386,15 @@ public class RobotContainer {
             () -> (0.5) * -driverController.getRightX()));
     driverController.y().onTrue(drive.resetGyro());
 
+
+    
+    driverController
+        .b()
+        .onTrue(new InstantCommand(()->{
+
+            hubLocation = new Translation3d(drive.getPose().getX() + Inches.of(22.2).in(Meters), drive.getPose().getY(), (2.03 + 1.52) / 2);
+        }));
+
     driverController
         .a()
         .whileTrue(
@@ -394,13 +405,13 @@ public class RobotContainer {
                   // TODO: essentialy euler's method, tracking position, velocity, angle, angular
                   // velocity,
                   // capping actual acceleration & angular acceleration by computed max values
-                  // Translation2d fieldPos = drive.getPose().getTranslation();
-                  Translation3d // targetDisplacement =
-                      // shooterOffset.plus(new Translation3d(fieldPos.getX(), fieldPos.getY(), 0));
+                  Translation2d fieldPos = drive.getPose().getTranslation();
+                  Translation3d targetDisplacement = hubLocation.minus(
+                      shooterOffset.plus(new Translation3d(fieldPos.getX(), fieldPos.getY(), 0)));
                       // lunar converter 152cm bottom - 203cm top
-                      targetDisplacement =
-                          new Translation3d(-getDisplacementX(), 0, (2.03 + 1.52) / 2)
-                              .minus(shooterOffset);
+                    // targetDisplacement =
+                    //     new Translation3d(-getDisplacementX(), 0, (2.03 + 1.52) / 2)
+                    //         .minus(shooterOffset);
 
                   FixedTrajectorySolution solution =
                       ProjectileTrajectoryUtils.calcFiringSolution(
