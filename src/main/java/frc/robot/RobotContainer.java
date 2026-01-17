@@ -328,12 +328,12 @@ public class RobotContainer {
             .getEntry();
     kShooterEntry =
         tuningTab
-            .add("Kshooter", 5.125) // Key "Ki", default 0.001
+            .add("Kshooter", 5.125)
             .withWidget("NumberSlider")
             .getEntry();
     kDisplacementXEntry =
         tuningTab
-            .add("displacementX", 2.0) // Key "Ki", default 0.001
+            .add("displacementX", Inches.of(16+22.2).in(Meters)) // bumper is 16, width of hub is 44.4
             .withWidget("NumberSlider")
             .getEntry();
   }
@@ -353,7 +353,7 @@ public class RobotContainer {
 
   public double getDisplacementX() {
     Logger.recordOutput("displacementX", kDisplacementXEntry.getDouble(67));
-    return kDisplacementXEntry.getDouble(2.0);
+    return kDisplacementXEntry.getDouble(Inches.of(16+22.2).in(Meters)); // bumper is 16, width of hub is 44.4
   }
 
   private static Translation3d hubLocation = new Translation3d(0, 0, 2);
@@ -392,7 +392,7 @@ public class RobotContainer {
         .b()
         .onTrue(new InstantCommand(()->{
 
-            hubLocation = new Translation3d(drive.getPose().getX() + Inches.of(22.2).in(Meters), drive.getPose().getY(), (2.03 + 1.52) / 2);
+            hubLocation = new Translation3d(drive.getPose().getX() + getDisplacementX(), drive.getPose().getY(), (2.03 + 1.52) / 2);
         }));
 
     driverController
