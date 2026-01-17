@@ -87,7 +87,7 @@ public class Shooter extends SubsystemBase implements SysIdSubsystem {
 
   public void setShooterVelocity(AngularVelocity velocity) {
     io1.setShooterVelocity(velocity);
-    io2.setShooterVelocity(velocity);
+    io2.setShooterVelocity(velocity.times(-1));
   }
 
   public Command setShooterVelocityCommand(

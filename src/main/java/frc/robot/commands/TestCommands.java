@@ -50,7 +50,8 @@ public class TestCommands {
     }
   }
 
-  public static Command testAutoAlign(Drive drive, Shooter shooter, double kShooter, double displaceX) {
+  public static Command testAutoAlign(
+      Drive drive, Shooter shooter, double kShooter, double displaceX) {
 
     return Commands.run(
         () -> {
@@ -62,7 +63,7 @@ public class TestCommands {
           Translation3d targetDisplacement =
               shooterOffset.plus(new Translation3d(fieldPos.getX(), fieldPos.getY(), 0));
           // lunar converter 152cm bottom - 203cm top
-          targetDisplacement = new Translation3d(displaceX, 0, (2.03+1.52)/2);
+          targetDisplacement = new Translation3d(displaceX, 0, (2.03 + 1.52) / 2);
 
           FixedTrajectorySolution solution =
               ProjectileTrajectoryUtils.calcFiringSolution(
