@@ -15,8 +15,6 @@ package frc.robot.commands;
 
 import static edu.wpi.first.units.Units.*;
 
-import java.util.function.DoubleSupplier;
-
 import edu.wpi.first.hal.HALUtil;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
@@ -73,14 +71,15 @@ public class TestCommands {
                   shooterAltitude);
 
           double shooterSpeedTransfer =
-              ProjectileSpeedUtils.calcSpeedTransferPercentage(ShooterConstants.ShooterSimConstants.SHOOTER_MOI,
+              ProjectileSpeedUtils.calcSpeedTransferPercentage(
+                  ShooterConstants.ShooterSimConstants.SHOOTER_MOI,
                   Pounds.of(0.2),
                   Inches.of(3.0 / 2));
-        shooterSpeedTransfer *= kShooter;
+          shooterSpeedTransfer *= kShooter;
           AngularVelocity shooterAngularVelocity =
               ProjectileSpeedUtils.calcNecessaryWheelSpeed(
-                  solution.shooterVelocity,shooterSpeedTransfer,Inches.of(3.0 / 2));
-                  
+                  solution.shooterVelocity, shooterSpeedTransfer, Inches.of(3.0 / 2));
+
           Logger.recordOutput(
               "DriveTest/ShooterRotationsPerSecond", shooterAngularVelocity.in(RotationsPerSecond));
           shooter.setShooterVelocity(shooterAngularVelocity);
