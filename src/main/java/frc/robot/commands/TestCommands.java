@@ -15,6 +15,8 @@ package frc.robot.commands;
 
 import static edu.wpi.first.units.Units.*;
 
+import java.util.function.DoubleSupplier;
+
 import edu.wpi.first.hal.HALUtil;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
@@ -50,7 +52,7 @@ public class TestCommands {
     }
   }
 
-  public static Command testAutoAlign(Drive drive, Shooter shooter) {
+  public static Command testAutoAlign(Drive drive, Shooter shooter, double kShooter) {
 
     return Commands.run(
         () -> {
@@ -70,12 +72,15 @@ public class TestCommands {
                   targetDisplacement,
                   shooterAltitude);
 
-          AngularVelocity shooterAngularVelocity =
-              ProjectileSpeedUtils.calcNecessaryWheelSpeed(
-                  solution.shooterVelocity,
-                  ShooterConstants.ShooterSimConstants.SHOOTER_MOI,
+          double shooterSpeedTransfer =
+              ProjectileSpeedUtils.calcSpeedTransferPercentage(ShooterConstants.ShooterSimConstants.SHOOTER_MOI,
                   Pounds.of(0.2),
                   Inches.of(3.0 / 2));
+        shooterSpeedTransfer *= kShooter;
+          AngularVelocity shooterAngularVelocity =
+              ProjectileSpeedUtils.calcNecessaryWheelSpeed(
+                  solution.shooterVelocity,shooterSpeedTransfer,Inches.of(3.0 / 2));
+                  
           Logger.recordOutput(
               "DriveTest/ShooterRotationsPerSecond", shooterAngularVelocity.in(RotationsPerSecond));
           shooter.setShooterVelocity(shooterAngularVelocity);
@@ -84,19 +89,7 @@ public class TestCommands {
               Radians.of(
                   (solution.azimuth.in(Radians) - drive.getPose().getRotation().getRadians()));
 
-          AngularVelocity currentOmega =
-              RadiansPerSecond.of(drive.getChassisSpeeds().omegaRadiansPerSecond);
-          Angle azimuthDiffFuture =
-              Radians.of(
-                  deadzone(
-                      solution.azimuth.in(Radians)
-                          - (drive.getPose().getRotation().getRadians()
-                              + currentOmega
-                                  .times(Milliseconds.of(20).times(numLagFrames))
-                                  .in(Radians)),
-                      0.05));
-
-          AngularVelocity omega = azimuthDiffFuture.div(Milliseconds.of(20).times(numLagFrames));
+          AngularVelocity omega = azimuthDiff.div(Seconds.of(1.0));
           if (Math.abs(omega.in(RadiansPerSecond)) > drive.getMaxAngularSpeedRadPerSec()) {
             omega =
                 RadiansPerSecond.of(

@@ -22,6 +22,10 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.networktables.GenericEntry;
+import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
@@ -287,7 +291,38 @@ public class RobotContainer {
     groundIntake.addRoutinesToChooser(autoChooser);
     mechanismPoseLogger = new MechanismPoseLogger(groundIntake, indexer, shooter);
     manualButtonBindings();
+    initializeTunables();
   }
+
+  
+private ShuffleboardTab tuningTab = Shuffleboard.getTab("Tuning");
+private GenericEntry kPEntry;
+private GenericEntry kIEntry;
+private GenericEntry kShooterEntry;
+
+public void initializeTunables() {
+    // Create entries for Kp and Ki, with default values
+    kPEntry = tuningTab.add("Kp", 0.01) // Key "Kp", default 0.01
+                      .withWidget("NumberSlider") // Use a slider widget
+                      .getEntry();
+    kIEntry = tuningTab.add("Ki", 0.001) // Key "Ki", default 0.001
+                      .withWidget("NumberSlider")
+                      .getEntry();
+    kShooterEntry = tuningTab.add("Kshooter", 1.0) // Key "Ki", default 0.001
+                      .withWidget("NumberSlider")
+                      .getEntry();
+}
+
+// In your periodic methods or wherever you use them:
+public double getKp() {
+    return kPEntry.getDouble(0.01); // Get value, use default if missing
+}
+public double getKi() {
+    return kIEntry.getDouble(0.001);
+}
+public double getKshooter() {
+    return kShooterEntry.getDouble(1.0);
+}
 
   public void manualButtonBindings() {
     // drivetrain controls
@@ -303,7 +338,7 @@ public class RobotContainer {
             () -> (0.5) * -driverController.getRightX()));
     driverController.y().onTrue(drive.resetGyro());
 
-    driverController.a().whileTrue(TestCommands.testAutoAlign(drive, shooter));
+    driverController.a().whileTrue(TestCommands.testAutoAlign(drive, shooter, getKshooter()));
 
     // driver indexer controls
     driverController
