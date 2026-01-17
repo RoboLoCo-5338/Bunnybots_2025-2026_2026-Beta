@@ -297,6 +297,7 @@ public class RobotContainer {
   private GenericEntry kPEntry;
   private GenericEntry kIEntry;
   private GenericEntry kShooterEntry;
+  private GenericEntry kDisplacementEntry;
 
   public void initializeTunables() {
     // Create entries for Kp and Ki, with default values
@@ -315,6 +316,11 @@ public class RobotContainer {
             .add("Kshooter", 1.0) // Key "Ki", default 0.001
             .withWidget("NumberSlider")
             .getEntry();
+    kDisplacementEntry =
+        tuningTab
+            .add("displacement", 1.0) // Key "Ki", default 0.001
+            .withWidget("NumberSlider")
+            .getEntry();
   }
 
   // In your periodic methods or wherever you use them:
@@ -328,6 +334,9 @@ public class RobotContainer {
 
   public double getKshooter() {
     return kShooterEntry.getDouble(1.0);
+  }
+  public double getDisplacement() {
+    return kDisplacementEntry.getDouble(1.0);
   }
 
   public void manualButtonBindings() {
@@ -344,7 +353,7 @@ public class RobotContainer {
             () -> (0.5) * -driverController.getRightX()));
     driverController.y().onTrue(drive.resetGyro());
 
-    driverController.a().whileTrue(TestCommands.testAutoAlign(drive, shooter, getKshooter()));
+    driverController.a().whileTrue(TestCommands.testAutoAlign(drive, shooter, getKshooter(), getDisplacement()));
 
     // driver indexer controls
     driverController

@@ -37,7 +37,7 @@ public class TestCommands {
   private static final Translation3d hubLocation = new Translation3d(0, 0, 2);
   private static final Translation3d shooterOffset =
       new Translation3d(0, -Inches.of(0.1956095).in(Meters), Inches.of(16.081505).in(Meters));
-  private static final Angle shooterAltitude = Degrees.of(60);
+  private static final Angle shooterAltitude = Degrees.of(50);
 
   private static AngularVelocity lastOmega = RadiansPerSecond.of(0);
   private static int numLagFrames = 3;
@@ -50,7 +50,7 @@ public class TestCommands {
     }
   }
 
-  public static Command testAutoAlign(Drive drive, Shooter shooter, double kShooter) {
+  public static Command testAutoAlign(Drive drive, Shooter shooter, double kShooter, double displaceX) {
 
     return Commands.run(
         () -> {
@@ -61,7 +61,8 @@ public class TestCommands {
           Translation2d fieldPos = drive.getPose().getTranslation();
           Translation3d targetDisplacement =
               shooterOffset.plus(new Translation3d(fieldPos.getX(), fieldPos.getY(), 0));
-          targetDisplacement = new Translation3d(3, 4, 2);
+          // lunar converter 152cm bottom - 203cm top
+          targetDisplacement = new Translation3d(displaceX, 0, (2.03+1.52)/2);
 
           FixedTrajectorySolution solution =
               ProjectileTrajectoryUtils.calcFiringSolution(
@@ -86,7 +87,9 @@ public class TestCommands {
 
           Angle azimuthDiff =
               Radians.of(
-                  (solution.azimuth.in(Radians) - drive.getPose().getRotation().getRadians()));
+                  deadzone(
+                      (solution.azimuth.in(Radians) - drive.getPose().getRotation().getRadians()),
+                      0.05));
 
           AngularVelocity omega = azimuthDiff.div(Seconds.of(1.0));
           if (Math.abs(omega.in(RadiansPerSecond)) > drive.getMaxAngularSpeedRadPerSec()) {
