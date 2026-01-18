@@ -13,41 +13,29 @@
 
 package frc.robot;
 
-import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.Inches;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.RPM;
-import static edu.wpi.first.units.Units.Radians;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
-import static edu.wpi.first.units.Units.Seconds;
 import static edu.wpi.first.units.Units.Volts;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
-import edu.wpi.first.hal.HALUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.networktables.GenericEntry;
-import edu.wpi.first.units.measure.Angle;
-import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.WaitUntilCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import frc.robot.commands.DriveCommands;
 import frc.robot.commands.AlignCommands;
+import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
 import frc.robot.sim.MechanismPoseLogger;
 import frc.robot.sim.SimMechanism;
@@ -82,8 +70,6 @@ import frc.robot.subsystems.vision.VisionConstants;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
-import frc.robot.util.ProjectileTrajectoryUtils;
-import frc.robot.util.ProjectileTrajectoryUtils.FixedTrajectorySolution;
 import org.ironmaple.simulation.SimulatedArena;
 import org.ironmaple.simulation.drivesims.SwerveDriveSimulation;
 import org.littletonrobotics.junction.Logger;
@@ -340,53 +326,41 @@ public class RobotContainer {
 
   // In your periodic methods or wherever you use them:
   public double getKp() {
-    try{
-    return kPEntry.getDouble(0.01); // Get value, use default if missing
-        } catch (Exception e) {
-        DriverStation.reportError(
-            "Failed to create resetDisplacement command",
-            e.getStackTrace()
-        );
-        return 0.01; // catches exception in command creation during boot, prevents BOOT LOOP
+    try {
+      return kPEntry.getDouble(0.01); // Get value, use default if missing
+    } catch (Exception e) {
+      DriverStation.reportError("Failed to create resetDisplacement command", e.getStackTrace());
+      return 0.01; // catches exception in command creation during boot, prevents BOOT LOOP
     }
   }
 
   public double getKi() {
-    try{
-    return kIEntry.getDouble(0.001);
-        } catch (Exception e) {
-        DriverStation.reportError(
-            "Failed to create resetDisplacement command",
-            e.getStackTrace()
-        );
-        return 0.001; // catches exception in command creation during boot, prevents BOOT LOOP
+    try {
+      return kIEntry.getDouble(0.001);
+    } catch (Exception e) {
+      DriverStation.reportError("Failed to create resetDisplacement command", e.getStackTrace());
+      return 0.001; // catches exception in command creation during boot, prevents BOOT LOOP
     }
   }
 
   public double getKshooter() {
-    try{
-    return kShooterEntry.getDouble(5.125);
-        } catch (Exception e) {
-        DriverStation.reportError(
-            "Failed to create resetDisplacement command",
-            e.getStackTrace()
-        );
-        return 5.125; // catches exception in command creation during boot, prevents BOOT LOOP
+    try {
+      return kShooterEntry.getDouble(5.125);
+    } catch (Exception e) {
+      DriverStation.reportError("Failed to create resetDisplacement command", e.getStackTrace());
+      return 5.125; // catches exception in command creation during boot, prevents BOOT LOOP
     }
   }
 
   public double getDisplacementX() {
-    try{
-    Logger.recordOutput("displacementX", kDisplacementXEntry.getDouble(67));
-    return kDisplacementXEntry.getDouble(
-        Inches.of(16 + 22.2).in(Meters)); // bumper is 16, width of hub is 44.4
-        } catch (Exception e) {
-        DriverStation.reportError(
-            "Failed to create resetDisplacement command",
-            e.getStackTrace()
-        );
-        return 
-        Inches.of(16 + 22.2).in(Meters); // catches exception in command creation during boot, prevents BOOT LOOP
+    try {
+      Logger.recordOutput("displacementX", kDisplacementXEntry.getDouble(67));
+      return kDisplacementXEntry.getDouble(
+          Inches.of(16 + 22.2).in(Meters)); // bumper is 16, width of hub is 44.4
+    } catch (Exception e) {
+      DriverStation.reportError("Failed to create resetDisplacement command", e.getStackTrace());
+      return Inches.of(16 + 22.2)
+          .in(Meters); // catches exception in command creation during boot, prevents BOOT LOOP
     }
   }
 
@@ -401,16 +375,26 @@ public class RobotContainer {
             () ->
                 -driverController.getLeftX()
                     * Math.pow(Math.abs(driverController.getLeftX()), 1.2 - 1),
-            () -> (0.5) * -driverController.getRightX()));
+            () -> (0.5) * -driverController.getRawAxis(3)));
     driverController.y().onTrue(drive.resetGyro());
 
-    driverController
-        .b()
-        .onTrue(AlignCommands.resetDisplacement(drive, getDisplacementX()));
+    driverController.x().onTrue(AlignCommands.resetDisplacement(drive, () -> getDisplacementX()));
 
     driverController
         .a()
-        .whileTrue(AlignCommands.testAlignStationary(drive, shooter, getKshooter(), getDisplacementX()));
+        .whileTrue(AlignCommands.testAlignStationary(drive, shooter, () -> getKshooter()));
+
+    driverController
+        .b()
+        .whileTrue(
+            AlignCommands.alignMoving(
+                drive,
+                shooter,
+                () -> getKshooter(),
+                () -> getDisplacementX(),
+                MetersPerSecond.of(3.0),
+                () -> -driverController.getLeftY(),
+                () -> -driverController.getLeftX()));
 
     // driver indexer controls
     driverController
