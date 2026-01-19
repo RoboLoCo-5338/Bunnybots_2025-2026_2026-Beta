@@ -67,7 +67,7 @@ public class DriveConstants {
     public static final double DRIVE_KV = 1.0 / Units.rotationsToRadians(1.0 / DRIVE_KV_ROT);
     public static final double TURN_KP = 8.0;
     public static final double TURN_KD = 0.0;
-    public static final DCMotor DRIVE_GEARBOX = DCMotor.getKrakenX60Foc(1);
-    public static final DCMotor TURN_GEARBOX = DCMotor.getKrakenX60Foc(1);
+    public static final DCMotor DRIVE_GEARBOX = DCMotor.getFalcon500(1);
+    public static final DCMotor TURN_GEARBOX = DCMotor.getFalcon500(1);
   }
 }
