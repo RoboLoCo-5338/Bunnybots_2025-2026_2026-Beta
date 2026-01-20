@@ -27,7 +27,7 @@ import frc.robot.util.LoggedTunableNumber;
 public class GroundIntakePivotIOTalonFX extends GroundIntakePivotIO {
 
   private final StatusSignal<AngularVelocity> groundIntakePivotVelocity;
-  private final StatusSignal<Voltage> groundIntakePivotAppliedVolts;
+  private final StatusSignal<Voltage> groundIntakePivotAppliedVoltage;
   private final StatusSignal<Current> groundIntakePivotCurrent;
   private final StatusSignal<Temperature> groundIntakePivotTemperature;
   private final StatusSignal<Integer> groundIntakePivotVersion;
@@ -61,7 +61,7 @@ public class GroundIntakePivotIOTalonFX extends GroundIntakePivotIO {
     groundIntakePivotEncoder =
         new REVThroughBoreEncoder(GroundIntakePivotConstants.GROUNDINTAKE_PIVOT_ENCODER_ID);
     groundIntakePivotVelocity = groundIntakePivotMotor.getVelocity();
-    groundIntakePivotAppliedVolts = groundIntakePivotMotor.getMotorVoltage();
+    groundIntakePivotAppliedVoltage = groundIntakePivotMotor.getMotorVoltage();
     groundIntakePivotCurrent = groundIntakePivotMotor.getStatorCurrent();
     groundIntakePivotTemperature = groundIntakePivotMotor.getDeviceTemp();
     groundIntakePivotVersion = groundIntakePivotMotor.getVersion();
@@ -72,7 +72,7 @@ public class GroundIntakePivotIOTalonFX extends GroundIntakePivotIO {
             BaseStatusSignal.setUpdateFrequencyForAll(
                 50.0,
                 groundIntakePivotVelocity,
-                groundIntakePivotAppliedVolts,
+                groundIntakePivotAppliedVoltage,
                 groundIntakePivotCurrent,
                 groundIntakePivotTemperature));
 
@@ -105,18 +105,18 @@ public class GroundIntakePivotIOTalonFX extends GroundIntakePivotIO {
         BaseStatusSignal.refreshAll(
             groundIntakePivotVelocity,
             groundIntakePivotCurrent,
-            groundIntakePivotAppliedVolts,
+            groundIntakePivotAppliedVoltage,
             groundIntakePivotTemperature);
 
     groundIntakePivotMotor.setPosition(
         Rotations.of(
             groundIntakePivotEncoder.get() / GroundIntakePivotConstants.SENSOR_TO_PIVOT_GEARING));
     inputs.groundIntakePivotConnected = groundIntakePivotDebouncer.calculate(motor2Status.isOK());
-    inputs.groundIntakePivotVelocityRadsPerSec = groundIntakePivotVelocity.getValue();
-    inputs.groundIntakePivotAppliedVolts = groundIntakePivotAppliedVolts.getValue();
-    inputs.groundIntakePivotCurrentAmps = groundIntakePivotCurrent.getValue();
-    inputs.groundIntakePivotTemperatureK = groundIntakePivotTemperature.getValue();
-    inputs.groundIntakePivotPositionRads =
+    inputs.odometryDrivePositiongroundIntakePivotVelocity = groundIntakePivotVelocity.getValue();
+    inputs.groundIntakePivotAppliedVoltage = groundIntakePivotAppliedVoltage.getValue();
+    inputs.groundIntakePivotCurrent = groundIntakePivotCurrent.getValue();
+    inputs.groundIntakePivotTemperature = groundIntakePivotTemperature.getValue();
+    inputs.groundIntakePivotPosition =
         Rotations.of(
             groundIntakePivotEncoder.get() / GroundIntakePivotConstants.SENSOR_TO_PIVOT_GEARING);
 

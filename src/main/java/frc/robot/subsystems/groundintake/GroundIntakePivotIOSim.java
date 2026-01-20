@@ -41,9 +41,9 @@ public class GroundIntakePivotIOSim extends GroundIntakePivotIOTalonFX implement
     Logger.recordOutput(
         "GroundIntakeRoller/GroundIntakeRollerVelocity", physicsSim.getVelocityRadPerSec());
     Logger.recordOutput(
-        "GroundIntakeRoller/GroundIntakeRollerAppliedVolts", physicsSim.getInput(0));
+        "GroundIntakeRoller/groundIntakeRollerAppliedVoltage", physicsSim.getInput(0));
     Logger.recordOutput(
-        "GroundIntakeRoller/GroundIntakeRollerCurrentAmps", physicsSim.getCurrentDrawAmps());
+        "GroundIntakeRoller/groundIntakeRollerCurrent", physicsSim.getCurrentDrawAmps());
 
     physicsSim.update(0.02);
 

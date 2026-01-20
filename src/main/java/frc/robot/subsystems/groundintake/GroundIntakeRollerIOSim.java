@@ -36,9 +36,9 @@ public class GroundIntakeRollerIOSim extends GroundIntakeRollerIOTalonFX impleme
     Logger.recordOutput(
         "GroundIntakeRoller/GroundIntakeRollerVelocity", physicsSim.getAngularVelocityRPM());
     Logger.recordOutput(
-        "GroundIntakeRoller/GroundIntakeRollerAppliedVolts", physicsSim.getInputVoltage());
+        "GroundIntakeRoller/groundIntakeRollerAppliedVoltage", physicsSim.getInputVoltage());
     Logger.recordOutput(
-        "GroundIntakeRoller/GroundIntakeRollerCurrentAmps", physicsSim.getCurrentDrawAmps());
+        "GroundIntakeRoller/groundIntakeRollerCurrent", physicsSim.getCurrentDrawAmps());
 
     physicsSim.update(0.02);
 

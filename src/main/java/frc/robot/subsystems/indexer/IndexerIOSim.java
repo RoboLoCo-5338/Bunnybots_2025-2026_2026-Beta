@@ -32,8 +32,8 @@ public class IndexerIOSim extends IndexerIOTalonFX {
     physicsSim.setInputVoltage(simMotor.getMotorVoltage());
 
     Logger.recordOutput("Indexer/indexerVelocity", physicsSim.getAngularVelocityRPM());
-    Logger.recordOutput("Indexer/indexerAppliedVolts", physicsSim.getInputVoltage());
-    Logger.recordOutput("Indexer/indexerCurrentAmps", physicsSim.getCurrentDrawAmps());
+    Logger.recordOutput("Indexer/indexerAppliedVoltage", physicsSim.getInputVoltage());
+    Logger.recordOutput("Indexer/indexerCurrent", physicsSim.getCurrentDrawAmps());
 
     physicsSim.update(0.02);
 

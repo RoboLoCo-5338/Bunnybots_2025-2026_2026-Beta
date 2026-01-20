@@ -91,7 +91,7 @@ public class GroundIntake extends SubsystemBase implements SysIdSubsystem {
         .until(
             () ->
                 position.isNear(
-                    inputsPivot.groundIntakePivotPositionRads,
+                    inputsPivot.groundIntakePivotPosition,
                     GroundIntakeConstants.GroundIntakePivotConstants.PIVOT_POSITION_TOLERANCE));
   }
 
@@ -110,7 +110,7 @@ public class GroundIntake extends SubsystemBase implements SysIdSubsystem {
   }
 
   private Boolean shouldPivotSafetyEscape(Direction direction) {
-    return inputsPivot.groundIntakePivotPositionRads.isNear(
+    return inputsPivot.groundIntakePivotPosition.isNear(
         (direction == Direction.kForward)
             ? GroundIntakePivotConstants.MAX_ANGLE
             : GroundIntakePivotConstants.MIN_ANGLE,
@@ -123,7 +123,7 @@ public class GroundIntake extends SubsystemBase implements SysIdSubsystem {
         Commands.idle(this)
             .until(
                 () ->
-                    inputsPivot.groundIntakePivotVelocityRadsPerSec.isNear(
+                    inputsPivot.odometryDrivePositiongroundIntakePivotVelocity.isNear(
                         RotationsPerSecond.of(0),
                         GroundIntakeConstants.GroundIntakePivotConstants.VELOCITY_RESET_TOLERANCE)),
         new ConditionalCommand(
@@ -132,7 +132,7 @@ public class GroundIntake extends SubsystemBase implements SysIdSubsystem {
                     Commands.idle(this)
                         .until(
                             () ->
-                                inputsPivot.groundIntakePivotPositionRads.isNear(
+                                inputsPivot.groundIntakePivotPosition.isNear(
                                     GroundIntakePivotConstants.MIN_ANGLE,
                                     GroundIntakeConstants.GroundIntakePivotConstants
                                         .PIVOT_POSITION_TOLERANCE))),
@@ -141,7 +141,7 @@ public class GroundIntake extends SubsystemBase implements SysIdSubsystem {
                     Commands.idle(this)
                         .until(
                             () ->
-                                inputsPivot.groundIntakePivotPositionRads.isNear(
+                                inputsPivot.groundIntakePivotPosition.isNear(
                                     GroundIntakePivotConstants.MAX_ANGLE,
                                     GroundIntakeConstants.GroundIntakePivotConstants
                                         .PIVOT_POSITION_TOLERANCE))),
@@ -150,7 +150,7 @@ public class GroundIntake extends SubsystemBase implements SysIdSubsystem {
         Commands.idle(this)
             .until(
                 () ->
-                    inputsPivot.groundIntakePivotVelocityRadsPerSec.isNear(
+                    inputsPivot.odometryDrivePositiongroundIntakePivotVelocity.isNear(
                         RotationsPerSecond.of(0),
                         GroundIntakeConstants.GroundIntakePivotConstants
                             .VELOCITY_RESET_TOLERANCE)));
@@ -162,7 +162,7 @@ public class GroundIntake extends SubsystemBase implements SysIdSubsystem {
         Commands.idle(this)
             .until(
                 () ->
-                    inputsRoller.groundIntakeRollerVelocityRadsPerSec.isNear(
+                    inputsRoller.groundIntakeRollerVelocity.isNear(
                         RotationsPerSecond.of(0),
                         GroundIntakeConstants.GroundIntakeRollerConstants.RESET_TOLERANCE)),
         Commands.runOnce(() -> ioRoller.setGroundIntakeRollerOpenLoop(Volts.of(0)), this));

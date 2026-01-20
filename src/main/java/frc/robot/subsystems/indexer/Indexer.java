@@ -77,7 +77,7 @@ public class Indexer extends SubsystemBase implements SysIdSubsystem.SysIdSingle
         Commands.idle(this)
             .until(
                 () ->
-                    inputs.indexerVelocityRadPerSec.isNear(
+                    inputs.indexerVelocity.isNear(
                         RotationsPerSecond.of(0), IndexerConstants.RESET_TOLERANCE)),
         Commands.runOnce(() -> io.indexerOpenLoop(Volts.of(0)), this));
   }

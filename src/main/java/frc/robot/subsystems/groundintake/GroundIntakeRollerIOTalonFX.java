@@ -25,7 +25,7 @@ import frc.robot.util.LoggedTunableNumber;
 public class GroundIntakeRollerIOTalonFX extends GroundIntakeRollerIO {
 
   private final StatusSignal<AngularVelocity> groundIntakeRollerVelocity;
-  private final StatusSignal<Voltage> groundIntakeRollerAppliedVolts;
+  private final StatusSignal<Voltage> groundIntakeRollerAppliedVoltage;
   private final StatusSignal<Current> groundIntakeRollerCurrent;
   private final StatusSignal<Temperature> groundIntakeRollerTemperature;
   private final StatusSignal<Integer> groundIntakeRollerVersion;
@@ -54,7 +54,7 @@ public class GroundIntakeRollerIOTalonFX extends GroundIntakeRollerIO {
   public GroundIntakeRollerIOTalonFX() {
 
     groundIntakeRollerVelocity = groundIntakeRollerMotor.getVelocity();
-    groundIntakeRollerAppliedVolts = groundIntakeRollerMotor.getMotorVoltage();
+    groundIntakeRollerAppliedVoltage = groundIntakeRollerMotor.getMotorVoltage();
     groundIntakeRollerCurrent = groundIntakeRollerMotor.getStatorCurrent();
     groundIntakeRollerTemperature = groundIntakeRollerMotor.getDeviceTemp();
     groundIntakeRollerVersion = groundIntakeRollerMotor.getVersion();
@@ -68,7 +68,7 @@ public class GroundIntakeRollerIOTalonFX extends GroundIntakeRollerIO {
             BaseStatusSignal.setUpdateFrequencyForAll(
                 50.0,
                 groundIntakeRollerVelocity,
-                groundIntakeRollerAppliedVolts,
+                groundIntakeRollerAppliedVoltage,
                 groundIntakeRollerCurrent,
                 groundIntakeRollerTemperature));
 
@@ -98,16 +98,16 @@ public class GroundIntakeRollerIOTalonFX extends GroundIntakeRollerIO {
         BaseStatusSignal.refreshAll(
             groundIntakeRollerVelocity,
             groundIntakeRollerCurrent,
-            groundIntakeRollerAppliedVolts,
+            groundIntakeRollerAppliedVoltage,
             groundIntakeRollerPosition,
             groundIntakeRollerTemperature);
 
     inputs.groundIntakeRollerConnected = groundIntakeRollerDebouncer.calculate(motor1Status.isOK());
-    inputs.groundIntakeRollerVelocityRadsPerSec = groundIntakeRollerVelocity.getValue();
-    inputs.groundIntakeRollerAppliedVolts = groundIntakeRollerAppliedVolts.getValue();
-    inputs.groundIntakeRollerCurrentAmps = groundIntakeRollerCurrent.getValue();
-    inputs.groundIntakeRollerTemperatureK = groundIntakeRollerTemperature.getValue();
-    inputs.groundIntakeRollerPositionRads = groundIntakeRollerPosition.getValue();
+    inputs.groundIntakeRollerVelocity = groundIntakeRollerVelocity.getValue();
+    inputs.groundIntakeRollerAppliedVoltage = groundIntakeRollerAppliedVoltage.getValue();
+    inputs.groundIntakeRollerCurrent = groundIntakeRollerCurrent.getValue();
+    inputs.groundIntakeRollerTemperature = groundIntakeRollerTemperature.getValue();
+    inputs.groundIntakeRollerPosition = groundIntakeRollerPosition.getValue();
 
     LoggedTunableNumber.ifChanged(
         2,

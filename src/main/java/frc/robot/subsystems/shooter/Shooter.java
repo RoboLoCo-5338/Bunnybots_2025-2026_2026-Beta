@@ -107,9 +107,9 @@ public class Shooter extends SubsystemBase implements SysIdSubsystem {
             Commands.idle(this)
                 .until(
                     () ->
-                        inputs1.shooterVelocityRadPerSec.isNear(
+                        inputs1.shooterVelocity.isNear(
                                 RotationsPerSecond.ofBaseUnits(0), ShooterConstants.RESET_TOLERANCE)
-                            && inputs2.shooterVelocityRadPerSec.isNear(
+                            && inputs2.shooterVelocity.isNear(
                                 RotationsPerSecond.ofBaseUnits(0),
                                 ShooterConstants.RESET_TOLERANCE)),
             Commands.runOnce(

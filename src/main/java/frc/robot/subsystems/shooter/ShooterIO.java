@@ -19,13 +19,13 @@ public class ShooterIO {
 
   @AutoLog
   public static class ShooterIOInputs {
-    public Angle shooterPositionRads = Rotations.of(Double.NaN);
-    public AngularVelocity shooterVelocityRadPerSec = RPM.of(Double.NaN);
-    public Voltage shooterAppliedVolts = Volts.of(Double.NaN);
-    public Current shooterCurrentAmps = Amps.of(Double.NaN);
+    public Angle shooterPosition = Rotations.of(Double.NaN);
+    public AngularVelocity shooterVelocity = RPM.of(Double.NaN);
+    public Voltage shooterAppliedVoltage = Volts.of(Double.NaN);
+    public Current shooterCurrent = Amps.of(Double.NaN);
     public boolean shooterConnected = false;
-    public Temperature shooterTemperatureK = Celsius.of(Double.NaN);
-    public Distance laserCanDistanceM = Millimeters.of(Double.NaN);
+    public Temperature shooterTemperature = Celsius.of(Double.NaN);
+    public Distance laserCanDistance = Millimeters.of(Double.NaN);
   }
 
   /**

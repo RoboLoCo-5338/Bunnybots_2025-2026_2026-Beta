@@ -26,7 +26,7 @@ import frc.robot.util.LoggedTunableNumber;
 
 public class IndexerIOTalonFX extends IndexerIO {
   private final StatusSignal<AngularVelocity> indexerVelocity;
-  private final StatusSignal<Voltage> indexerAppliedVolts;
+  private final StatusSignal<Voltage> indexerAppliedVoltage;
   private final StatusSignal<Current> indexerCurrent;
   private final StatusSignal<Temperature> indexerTemperature;
   private final StatusSignal<Integer> indexerVersion;
@@ -56,7 +56,7 @@ public class IndexerIOTalonFX extends IndexerIO {
 
   public IndexerIOTalonFX() {
     indexerVelocity = indexerMotor.getVelocity();
-    indexerAppliedVolts = indexerMotor.getMotorVoltage();
+    indexerAppliedVoltage = indexerMotor.getMotorVoltage();
     indexerCurrent = indexerMotor.getStatorCurrent();
     indexerTemperature = indexerMotor.getDeviceTemp();
     indexerVersion = indexerMotor.getVersion();
@@ -68,7 +68,7 @@ public class IndexerIOTalonFX extends IndexerIO {
         5,
         () ->
             BaseStatusSignal.setUpdateFrequencyForAll(
-                50.0, indexerVelocity, indexerAppliedVolts, indexerCurrent, indexerTemperature));
+                50.0, indexerVelocity, indexerAppliedVoltage, indexerCurrent, indexerTemperature));
 
     ParentDevice.optimizeBusUtilizationForAll(indexerMotor);
 
@@ -107,7 +107,7 @@ public class IndexerIOTalonFX extends IndexerIO {
         BaseStatusSignal.refreshAll(
             indexerVelocity,
             indexerCurrent,
-            indexerAppliedVolts,
+            indexerAppliedVoltage,
             indexerPosition,
             indexerTemperature);
 
@@ -115,18 +115,18 @@ public class IndexerIOTalonFX extends IndexerIO {
     Measurement m1 = lcIndexer.getMeasurement();
     if (m1 == null) {
       // LaserCan did not return a measurement
-      inputs.indexerDistanceM = Millimeters.of(-1);
+      inputs.indexerDistance = Millimeters.of(-1);
     } else if (m1.status == LaserCan.LASERCAN_STATUS_VALID_MEASUREMENT) {
-      inputs.indexerDistanceM = Millimeters.of(m1.distance_mm);
+      inputs.indexerDistance = Millimeters.of(m1.distance_mm);
     } else if (m1.status == LaserCan.LASERCAN_STATUS_WEAK_SIGNAL) {
       // LaserCan returned a weak signal
-      inputs.indexerDistanceM = Millimeters.of(-1);
+      inputs.indexerDistance = Millimeters.of(-1);
     }
-    inputs.indexerVelocityRadPerSec = indexerVelocity.getValue();
-    inputs.indexerAppliedVolts = indexerAppliedVolts.getValue();
-    inputs.indexerCurrentAmps = indexerCurrent.getValue();
-    inputs.indexerTemperatureK = indexerTemperature.getValue();
-    inputs.indexerPositionRads = indexerPosition.getValue();
+    inputs.indexerVelocity = indexerVelocity.getValue();
+    inputs.indexerAppliedVoltage = indexerAppliedVoltage.getValue();
+    inputs.indexerCurrent = indexerCurrent.getValue();
+    inputs.indexerTemperature = indexerTemperature.getValue();
+    inputs.indexerPosition = indexerPosition.getValue();
 
     LoggedTunableNumber.ifChanged(
         0,
