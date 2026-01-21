@@ -73,8 +73,62 @@ public class ProjectileTrajectoryUtils {
       this.shooterAcceleration = shooterAcceleration;
     }
   }
+
   /**
    * Calculates the Robot moving firing solution
+   *
+   * @param botVelocityX X-velocity of the Robot, FOC, in meters per second
+   * @param botVelocityY Y-velocity of the Robot, FOC, in meters per second
+   * @param botAccelX X-velocity of the Robot, FOC, in meters per second per second
+   * @param botAccelY Y-velocity of the Robot, FOC, in meters per second per second
+   * @param targetPos 3d displacement of the target, FOC, in meters
+   * @param shooterAltitude Angle of the fixed shooter from horizontal
+   * @return Time of flight for the projectile from launch to target
+   */
+  public static MovingTrajectorySolution calcMovingFiringSolution(
+      LinearVelocity botVelocityX,
+      LinearVelocity botVelocityY,
+      LinearAcceleration botAccelX,
+      LinearAcceleration botAccelY,
+      Translation3d targetPos,
+      Angle shooterAltitude) {
+
+    if (Math.sqrt(
+            Math.pow(botVelocityX.in(MetersPerSecond), 2)
+                + Math.pow(botVelocityY.in(MetersPerSecond), 2))
+        < 1e-3) {
+      FixedTrajectorySolution fixedSolution =
+          calcFiringSolution(botVelocityX, botVelocityY, targetPos, shooterAltitude);
+      return new MovingTrajectorySolution(
+          fixedSolution.azimuth,
+          RadiansPerSecond.of(0),
+          fixedSolution.shooterVelocity,
+          MetersPerSecondPerSecond.of(0));
+    }
+
+    Time timeOfFlight = calcTargetTime(botVelocityX, botVelocityY, targetPos, shooterAltitude);
+    Logger.recordOutput("MovingTrajectory/timeOfFlight", timeOfFlight);
+    double dfdt =
+        calcDfdt(botVelocityX, botVelocityY, botAccelX, botAccelY, targetPos, shooterAltitude);
+    Logger.recordOutput("MovingTrajectory/dfdt", dfdt);
+    LinearVelocity shooterVelocity = calcShooterVelocity(timeOfFlight, targetPos, shooterAltitude);
+    Logger.recordOutput("MovingTrajectory/shooterVelocity", shooterVelocity);
+    LinearAcceleration shooterAcceleration =
+        calcShooterAcceleration(timeOfFlight, dfdt, targetPos, shooterAltitude);
+    Logger.recordOutput("MovingTrajectory/shooterAcceleration", shooterAcceleration);
+    Angle azimuth =
+        calcRobotHeadingAzimuth(
+            botVelocityX, botVelocityY, timeOfFlight, shooterVelocity, targetPos, shooterAltitude);
+    Logger.recordOutput("MovingTrajectory/azimuth", azimuth);
+    AngularVelocity omega =
+        calcRobotAngularVelocity(
+            botVelocityX, botVelocityY, timeOfFlight, dfdt, targetPos, shooterAltitude);
+    Logger.recordOutput("MovingTrajectory/omega", omega);
+    return new MovingTrajectorySolution(azimuth, omega, shooterVelocity, shooterAcceleration);
+  }
+
+  /**
+   * Calculates the Robot moving firing solution ASSUMING CONSTANT VELOCITY
    *
    * @param botVelocityX X-velocity of the Robot, FOC, in meters
    * @param botVelocityY Y-velocity of the Robot, FOC, in meters
@@ -82,7 +136,7 @@ public class ProjectileTrajectoryUtils {
    * @param shooterAltitude Angle of the fixed shooter from horizontal
    * @return Time of flight for the projectile from launch to target
    */
-  public static MovingTrajectorySolution calcMovingFiringSolution(
+  public static MovingTrajectorySolution calcMovingFiringSolutionConstantVelocity(
       LinearVelocity botVelocityX,
       LinearVelocity botVelocityY,
       Translation3d targetPos,
@@ -103,7 +157,14 @@ public class ProjectileTrajectoryUtils {
 
     Time timeOfFlight = calcTargetTime(botVelocityX, botVelocityY, targetPos, shooterAltitude);
     Logger.recordOutput("MovingTrajectory/timeOfFlight", timeOfFlight);
-    double dfdt = calcDfdt(botVelocityX, botVelocityY, targetPos, shooterAltitude);
+    double dfdt =
+        calcDfdt(
+            botVelocityX,
+            botVelocityY,
+            MetersPerSecondPerSecond.of(0),
+            MetersPerSecondPerSecond.of(0),
+            targetPos,
+            shooterAltitude);
     Logger.recordOutput("MovingTrajectory/dfdt", dfdt);
     LinearVelocity shooterVelocity = calcShooterVelocity(timeOfFlight, targetPos, shooterAltitude);
     Logger.recordOutput("MovingTrajectory/shooterVelocity", shooterVelocity);
@@ -277,6 +338,8 @@ public class ProjectileTrajectoryUtils {
   public static double calcDfdt(
       LinearVelocity botVelocityX,
       LinearVelocity botVelocityY,
+      LinearAcceleration botAccelX,
+      LinearAcceleration botAccelY,
       Translation3d targetPos,
       Angle shooterAltitude) {
     if (Math.sqrt(
@@ -292,16 +355,16 @@ public class ProjectileTrajectoryUtils {
     double y = targetPos.getY();
     double v_x = botVelocityX.in(MetersPerSecond);
     double v_y = botVelocityY.in(MetersPerSecond);
+    double a_x = botAccelX.in(MetersPerSecondPerSecond);
+    double a_y = botAccelY.in(MetersPerSecondPerSecond);
     double a = 0.25 * Math.pow(g, 2) * cos2a;
     double b = g * targetPos.getZ() * cos2a - v_x * v_x * sin2a - v_y * v_y * sin2a;
     double c = 2.0 * (x * v_x + y * v_y) * sin2a;
     double d = Math.pow(targetPos.getZ(), 2) * cos2a - x * x * sin2a - y * y * sin2a;
 
-    double accel_x = 0;
-    double accel_y = 0;
-    double bPrime = -2 * sin2a * v_x - 2 * sin2a * v_y;
-    double cPrime = 2 * sin2a * (v_x * v_x + accel_x * x + v_y * v_y + accel_y * y);
-    double dPrime = -2 * sin2a * x * v_x - 2 * sin2a * y * v_y;
+    double bPrime = -2 * sin2a * (v_x * a_x + v_y * a_y);
+    double cPrime = 2 * sin2a * (v_x * v_x + a_x * x + v_y * v_y + a_y * y);
+    double dPrime = -2 * sin2a * (x * v_x + y * v_y);
     return dfdtDepressedQuarticRealHigh(a, b, c, d, bPrime, cPrime, dPrime);
   }
 

@@ -3,6 +3,7 @@ package frc.robot.commands;
 import static edu.wpi.first.units.Units.*;
 
 import edu.wpi.first.hal.HALUtil;
+import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -11,7 +12,9 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.units.measure.LinearAcceleration;
 import edu.wpi.first.units.measure.LinearVelocity;
+import edu.wpi.first.units.measure.Time;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -20,6 +23,9 @@ import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.util.ProjectileTrajectoryUtils;
 import frc.robot.util.ProjectileTrajectoryUtils.FixedTrajectorySolution;
+import frc.robot.util.ProjectileTrajectoryUtils.MovingTrajectorySolution;
+import java.util.Deque;
+import java.util.LinkedList;
 import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
 
@@ -36,7 +42,6 @@ public class AlignCommands {
   private static final Angle shooterAltitude = Degrees.of(50);
 
   private static AngularVelocity lastOmega = RadiansPerSecond.of(0);
-  private static int numLagFrames = 3;
 
   private static double deadzone(double input, double zone) {
     if (Math.abs(input) < zone) {
@@ -46,7 +51,11 @@ public class AlignCommands {
     }
   }
 
-  public static Command resetDisplacement(Drive drive, DoubleSupplier displacementX) {
+  public static Command resetDisplacement(
+      Drive drive,
+      DoubleSupplier displacementX,
+      DoubleSupplier displacementY,
+      DoubleSupplier displacementZ) {
     try {
       return Commands.runOnce(
           () -> {
@@ -54,8 +63,8 @@ public class AlignCommands {
             hubLocation =
                 new Translation3d(
                     fieldPos.getX() + displacementX.getAsDouble(),
-                    fieldPos.getY(),
-                    (2.03 + 1.52) / 2); // lunar converter 152cm bottom - 203cm top
+                    fieldPos.getY() + displacementY.getAsDouble(),
+                    displacementZ.getAsDouble());
           },
           drive);
     } catch (Exception e) {
@@ -77,7 +86,7 @@ public class AlignCommands {
                 azimuthStationaryPid.enableContinuousInput(-Math.PI, Math.PI);
               })
           .andThen(
-              Commands.run(
+              Commands.runEnd(
                   () -> {
                     Translation2d fieldPos = drive.getPose().getTranslation();
                     Translation3d targetDisplacement =
@@ -112,7 +121,7 @@ public class AlignCommands {
                       azimuthDiff = Degrees.of(azimuthDiff.in(Degrees) + 360);
                     }
 
-                    AngularVelocity omega = azimuthDiff.div(Seconds.of(0.5));
+                    AngularVelocity omega = azimuthDiff.div(Seconds.of(0.1));
                     if (Math.abs(omega.in(RadiansPerSecond))
                         > drive.getMaxAngularSpeedRadPerSec()) {
                       omega =
@@ -120,10 +129,10 @@ public class AlignCommands {
                               Math.copySign(
                                   drive.getMaxAngularSpeedRadPerSec(), omega.in(RadiansPerSecond)));
                     }
-                    omega =
-                        RadiansPerSecond.of(
-                            azimuthStationaryPid.calculate(
-                                drive.getRotation().getRadians(), solution.azimuth.in(Radians)));
+                    // omega =
+                    //     RadiansPerSecond.of(
+                    //         azimuthStationaryPid.calculate(
+                    //             drive.getRotation().getRadians(), solution.azimuth.in(Radians)));
                     ChassisSpeeds speeds =
                         new ChassisSpeeds(MetersPerSecond.of(0), MetersPerSecond.of(0), omega);
                     drive.runVelocity(
@@ -152,6 +161,10 @@ public class AlignCommands {
                         "AlignStationary/actualShooterRadPerSecond",
                         shooter.inputs1.shooterVelocityRadPerSec);
                   },
+                  () -> {
+                    drive.stop();
+                    shooter.setShooterVelocity(RadiansPerSecond.of(0));
+                  },
                   drive,
                   shooter));
 
@@ -173,7 +186,6 @@ public class AlignCommands {
       Drive drive,
       Shooter shooter,
       DoubleSupplier kShooter,
-      DoubleSupplier displacementX,
       LinearVelocity maxSpeed,
       DoubleSupplier inputX,
       DoubleSupplier inputY) {
@@ -217,20 +229,10 @@ public class AlignCommands {
                     Logger.recordOutput("AlignMoving/yPos", yPos);
 
                     // clamp inputs
-                    LinearVelocity vX, vY;
-                    double vMag =
-                        Math.sqrt(
-                            inputX.getAsDouble() * inputX.getAsDouble()
-                                + inputY.getAsDouble() * inputY.getAsDouble());
-                    if (vMag > 1) {
-                      vX = maxSpeed.times(inputX.getAsDouble() / vMag);
-                      vY = maxSpeed.times(inputY.getAsDouble() / vMag);
-                    } else {
-                      vX = maxSpeed.times(inputX.getAsDouble());
-                      vY = maxSpeed.times(inputY.getAsDouble());
-                    }
-                    Logger.recordOutput("AlignMoving/vX", vX);
-                    Logger.recordOutput("AlignMoving/vY", vY);
+                    Pair<LinearVelocity, LinearVelocity> vIn =
+                        clampInputs(inputX, inputY, maxSpeed);
+                    LinearVelocity vX = vIn.getFirst();
+                    LinearVelocity vY = vIn.getFirst();
 
                     Distance diffX = setX.minus(xPos);
                     Distance diffY = setY.minus(yPos);
@@ -245,7 +247,7 @@ public class AlignCommands {
                             shooterOffset.plus(
                                 new Translation3d(xPos.in(Meters), yPos.in(Meters), 0)));
                     ProjectileTrajectoryUtils.MovingTrajectorySolution solution =
-                        ProjectileTrajectoryUtils.calcMovingFiringSolution(
+                        ProjectileTrajectoryUtils.calcMovingFiringSolutionConstantVelocity(
                             realVx, realVy, targetDisplacement, shooterAltitude);
 
                     AngularVelocity shooterAngularVelocity =
@@ -293,8 +295,9 @@ public class AlignCommands {
                         ChassisSpeeds.fromFieldRelativeSpeeds(
                             speeds,
                             (isFlipped
-                                ? drive.getRotation().plus(new Rotation2d(Math.PI))
-                                : drive.getRotation()).plus(new Rotation2d(omega.times(Milliseconds.of(10)))));
+                                    ? drive.getRotation().plus(new Rotation2d(Math.PI))
+                                    : drive.getRotation())
+                                .plus(new Rotation2d(omega.times(Milliseconds.of(10)))));
 
                     ChassisSpeeds adjustedSpeeds =
                         new ChassisSpeeds(
@@ -309,25 +312,302 @@ public class AlignCommands {
                             realVx,
                             realVy,
                             hubLocation.minus(
-                            shooterOffset.plus(
-                                new Translation3d(xPos.in(Meters), yPos.in(Meters), 0))),
+                                shooterOffset.plus(
+                                    new Translation3d(xPos.in(Meters), yPos.in(Meters), 0))),
                             shooterAltitude,
                             Radians.of(drive.getPose().getRotation().getRadians()),
                             solution.shooterVelocity);
 
                     Logger.recordOutput(
                         "AlignMoving/minDistTrajectory", Math.min(error.in(Meters), 1));
-                    Logger.recordOutput(
-                        "AlignMoving/azimuth",
-                        solution.azimuth);
+                    Logger.recordOutput("AlignMoving/azimuth", solution.azimuth);
                   },
                   () -> {
                     drive.stop();
+                    shooter.setShooterVelocity(RadiansPerSecond.of(0));
                   }));
     } catch (Exception e) {
       DriverStation.reportError("testAlignMoving", e.getStackTrace());
       return Commands
           .none(); // catches exception in command creation during boot, prevents BOOT LOOP
     }
+  }
+
+  static Deque<Distance> posXinputs = new LinkedList<>();
+  static Deque<Distance> posYinputs = new LinkedList<>();
+  static Deque<LinearVelocity> velXinputs = new LinkedList<>();
+  static Deque<LinearVelocity> velYinputs = new LinkedList<>();
+  static Deque<LinearAcceleration> accelXinputs = new LinkedList<>();
+  static Deque<LinearAcceleration> accelYinputs = new LinkedList<>();
+  static Deque<Angle> thetaCalc = new LinkedList<>();
+  static Deque<AngularVelocity> omegaCalc = new LinkedList<>();
+  static Deque<AngularVelocity> shooterVelCalc = new LinkedList<>();
+  private static int numLagInputs = 10;
+  private static int numAdvanceVel = 6; // compensating for pid lag
+  private static Time deltaT = Milliseconds.of(20);
+
+  private static int numAdvanceOmega = 6; // compensating for pid lag
+  private static int numAdvanceShooter = 6; // compensating for pid lag
+
+  public static Command testInputShape(
+      Drive drive,
+      Shooter shooter,
+      DoubleSupplier kShooter,
+      LinearVelocity maxSpeed,
+      DoubleSupplier inputX,
+      DoubleSupplier inputY) {
+    try {
+      return Commands.runOnce(
+              () -> {
+                // azimuthMovingPid = new PIDController(azimuthKp, 0, azimuthKd);
+                startAlignMovingTime = HALUtil.getFPGATime();
+                posXinputs.clear();
+                posYinputs.clear();
+                velXinputs.clear();
+                velYinputs.clear();
+                accelXinputs.clear();
+                accelYinputs.clear();
+                thetaCalc.clear();
+                omegaCalc.clear();
+                shooterVelCalc.clear();
+                for (int i = 0; i < numLagInputs + 1; i++) {
+                  posXinputs.offerLast(drive.getPose().getMeasureX());
+                  posYinputs.offerLast(drive.getPose().getMeasureY());
+                }
+                for (int i = 0; i < numLagInputs - numAdvanceVel; i++) {
+                  velXinputs.offerLast(MetersPerSecond.of(0));
+                  velYinputs.offerLast(MetersPerSecond.of(0));
+                }
+                for (int i = 0; i < numLagInputs - 1; i++) {
+                  accelXinputs.offerLast(MetersPerSecondPerSecond.of(0));
+                  accelYinputs.offerLast(MetersPerSecondPerSecond.of(0));
+                }
+
+                FixedTrajectorySolution solution =
+                    ProjectileTrajectoryUtils.calcFiringSolution(
+                        MetersPerSecond.of(0),
+                        MetersPerSecond.of(0),
+                        hubLocation.minus(
+                            shooterOffset.plus(
+                                new Translation3d(
+                                    drive.getPose().getX(), drive.getPose().getY(), 0))),
+                        shooterAltitude);
+
+                for (int i = 0; i < numLagInputs - 1; i++) {
+                  thetaCalc.offerLast(solution.azimuth);
+                }
+                for (int i = 0; i < numLagInputs - numAdvanceOmega; i++) {
+                  omegaCalc.offerLast(RadiansPerSecond.of(0));
+                }
+                for (int i = 0; i < numLagInputs - numAdvanceShooter; i++) {
+                  shooterVelCalc.offerLast(
+                      RadiansPerSecond.of(
+                          solution.shooterVelocity.in(MetersPerSecond) * kShooter.getAsDouble()));
+                }
+              })
+          .andThen(
+              Commands.runEnd(
+                  () -> {
+                    // calculation values:
+                    // time-synchronized
+                    Distance calcX, calcY;
+                    LinearVelocity calcVx, calcVy;
+                    LinearAcceleration calcAx, calcAy;
+
+                    // process inputs
+                    Pair<LinearVelocity, LinearVelocity> vIn =
+                        clampInputs(inputX, inputY, maxSpeed);
+                    Pair<LinearVelocity, LinearVelocity> vLimited =
+                        limitVelocityByAccel(vIn, velXinputs.peekLast(), velYinputs.peekLast());
+                    accelXinputs.offer(
+                        (vLimited.getFirst().minus(velXinputs.peekLast())).div(deltaT));
+                    accelYinputs.offer(
+                        (vLimited.getSecond().minus(velYinputs.peekLast())).div(deltaT));
+                    calcAx = accelXinputs.peekLast();
+                    calcAy = accelYinputs.peekLast();
+                    calcVx = velXinputs.peekLast();
+                    calcVy = velYinputs.peekLast();
+                    calcX = posXinputs.peekLast();
+                    calcY = posYinputs.peekLast();
+                    velXinputs.offerLast(vLimited.getFirst());
+                    velYinputs.offerLast(vLimited.getSecond());
+                    posXinputs.offerLast(
+                        posXinputs.peekLast().plus(vLimited.getFirst().times(deltaT)));
+                    posYinputs.offerLast(
+                        posYinputs.peekLast().plus(vLimited.getSecond().times(deltaT)));
+                    Logger.recordOutput("testInputShape/vInX", vIn.getFirst());
+                    Logger.recordOutput("testInputShape/vInY", vIn.getSecond());
+                    Logger.recordOutput("testInputShape/vLimitedX", vLimited.getFirst());
+                    Logger.recordOutput("testInputShape/vLimitedY", vLimited.getSecond());
+
+                    MovingTrajectorySolution solution =
+                        ProjectileTrajectoryUtils.calcMovingFiringSolution(
+                            calcVx,
+                            calcVy,
+                            calcAx,
+                            calcAy,
+                            hubLocation.minus(
+                                shooterOffset.plus(
+                                    new Translation3d(calcX.in(Meters), calcY.in(Meters), 0))),
+                            shooterAltitude);
+
+                    AngularVelocity shooterAngularVelocity =
+                        RadiansPerSecond.of(
+                            solution.shooterVelocity.in(MetersPerSecond) * kShooter.getAsDouble());
+                    shooterVelCalc.offerLast(shooterAngularVelocity);
+                    thetaCalc.offerLast(solution.azimuth);
+                    omegaCalc.offerLast(solution.omega);
+                    Logger.recordOutput("testInputShape/Calculated/theta", solution.azimuth);
+                    Logger.recordOutput("testInputShape/Calculated/omega", solution.omega);
+                    Logger.recordOutput(
+                        "testInputShape/Calculated/shooterVel", shooterAngularVelocity);
+
+                    Logger.recordOutput("testInputShape/Calculated/accelX", calcAx);
+                    Logger.recordOutput("testInputShape/Calculated/accelY", calcAy);
+                    Logger.recordOutput("testInputShape/Calculated/velX", calcVx);
+                    Logger.recordOutput("testInputShape/Calculated/velY", calcVy);
+                    Logger.recordOutput("testInputShape/Calculated/posX", calcX);
+                    Logger.recordOutput("testInputShape/Calculated/posY", calcY);
+
+                    /*
+                     *
+                     *
+                     * apply lagged inputs
+                     *
+                     *
+                     */
+
+                    Distance x = posXinputs.pollFirst();
+                    Distance y = posYinputs.pollFirst();
+                    LinearVelocity vX = velXinputs.pollFirst();
+                    LinearVelocity vY = velYinputs.pollFirst();
+                    LinearAcceleration aX = accelXinputs.pollFirst();
+                    LinearAcceleration aY = accelYinputs.pollFirst();
+                    Logger.recordOutput("testInputShape/Applied/posX", x);
+                    Logger.recordOutput("testInputShape/Applied/posY", y);
+                    Logger.recordOutput("testInputShape/Applied/vX", vX);
+                    Logger.recordOutput("testInputShape/Applied/vY", vY);
+                    vX = vX.times(0.9194105329);
+                    vY = vY.times(0.9194105329);
+                    Logger.recordOutput("testInputShape/Applied/aX", aX);
+                    Logger.recordOutput("testInputShape/Applied/aY", aY);
+                    // Distance xErr = x.minus(drive.getPose().getMeasureX());
+                    // Distance yErr = y.minus(drive.getPose().getMeasureY());
+                    // vX = vX.plus(xErr.div(Milliseconds.of(500)).times(0.1));
+                    // vY = vY.plus(yErr.div(Milliseconds.of(500)).times(0.1));
+                    Angle theta = thetaCalc.pollFirst();
+                    AngularVelocity omega = omegaCalc.pollFirst();
+                    Angle azimuthDiff =
+                        Radians.of(
+                            deadzone(
+                                (theta.in(Radians) - drive.getPose().getRotation().getRadians()),
+                                0.001));
+                    if (azimuthDiff.in(Degrees) > 180) {
+                      azimuthDiff = Degrees.of(azimuthDiff.in(Degrees) - 360);
+                    } else if (azimuthDiff.in(Degrees) < -180) {
+                      azimuthDiff = Degrees.of(azimuthDiff.in(Degrees) + 360);
+                    }
+                    omega = omega.plus(azimuthDiff.div(Seconds.of(0.1)));
+                    // omega = RadiansPerSecond.of(0);
+
+                    ChassisSpeeds speeds = new ChassisSpeeds(vX, vY, omega);
+                    speeds =
+                        ChassisSpeeds.fromFieldRelativeSpeeds(
+                            speeds,
+                            isFlipped
+                                ? drive.getRotation().plus(new Rotation2d(Math.PI))
+                                : drive.getRotation());
+                    drive.runVelocity(speeds);
+                    AngularVelocity shooterVel = shooterVelCalc.pollFirst();
+                    shooter.setShooterVelocity(shooterVel.times(0.1647809660));
+                    Logger.recordOutput("testInputShape/Applied/shooterVel", shooterVel);
+                    Logger.recordOutput("testInputShape/Applied/omega", omega);
+                    Logger.recordOutput("testInputShape/Applied/theta", theta);
+
+                    /*
+                     * record real state
+                     *
+                     */
+                    Logger.recordOutput("testInputShape/Real/posX", drive.getPose().getMeasureX());
+                    Logger.recordOutput("testInputShape/Real/posY", drive.getPose().getMeasureY());
+                    Logger.recordOutput(
+                        "testInputShape/Real/vX",
+                        MetersPerSecond.of(
+                            ChassisSpeeds.fromRobotRelativeSpeeds(
+                                    drive.getChassisSpeeds(),
+                                    isFlipped
+                                        ? drive.getRotation().plus(new Rotation2d(Math.PI))
+                                        : drive.getRotation())
+                                .vxMetersPerSecond));
+                    Logger.recordOutput(
+                        "testInputShape/Real/vY",
+                        MetersPerSecond.of(
+                            ChassisSpeeds.fromRobotRelativeSpeeds(
+                                    drive.getChassisSpeeds(),
+                                    isFlipped
+                                        ? drive.getRotation().plus(new Rotation2d(Math.PI))
+                                        : drive.getRotation())
+                                .vyMetersPerSecond));
+                    Logger.recordOutput(
+                        "testInputShape/Real/omega",
+                        RadiansPerSecond.of(drive.getChassisSpeeds().omegaRadiansPerSecond));
+                    Logger.recordOutput(
+                        "testInputShape/Real/shooterVel", shooter.inputs1.shooterVelocityRadPerSec);
+                    Logger.recordOutput("testInputShape/Real/theta", drive.getPose().getRotation());
+                  },
+                  () -> {
+                    drive.stop();
+                    shooter.setShooterVelocity(RadiansPerSecond.of(0));
+                  }));
+
+    } catch (Exception e) {
+      DriverStation.reportError("testInputShape", e.getStackTrace());
+      return Commands
+          .none(); // catches exception in command creation during boot, prevents BOOT LOOP
+    }
+  }
+
+  //   Torque maxTorque = NewtonMeters.of(10);
+  //   Force maxForce = Newtons.of(10);
+  static LinearAcceleration maxAcceleration = MetersPerSecondPerSecond.of(1);
+
+  private static Pair<LinearVelocity, LinearVelocity> limitVelocityByAccel(
+      Pair<LinearVelocity, LinearVelocity> velocity,
+      LinearVelocity lastVelX,
+      LinearVelocity lastVelY) {
+    Pair<LinearVelocity, LinearVelocity> velDiff =
+        new Pair<>(velocity.getFirst().minus(lastVelX), velocity.getSecond().minus(lastVelY));
+
+    double velDiffMag =
+        Math.hypot(velDiff.getFirst().in(MetersPerSecond), velDiff.getSecond().in(MetersPerSecond));
+
+    if (velDiffMag < maxAcceleration.times(Milliseconds.of(20)).in(MetersPerSecond)) {
+      return velocity;
+    } // velDiffMag > maxAcceleration.times(Milliseconds.of(20))
+    double newDiffMag = maxAcceleration.times(Milliseconds.of(20)).in(MetersPerSecond);
+    LinearVelocity velDiffAdjustedX = velDiff.getFirst().times(newDiffMag / velDiffMag);
+    LinearVelocity velDiffAdjustedY = velDiff.getSecond().times(newDiffMag / velDiffMag);
+    LinearVelocity vX = lastVelX.plus(velDiffAdjustedX);
+    LinearVelocity vY = lastVelY.plus(velDiffAdjustedY);
+    return new Pair<>(vX, vY);
+  }
+
+  private static Pair<LinearVelocity, LinearVelocity> clampInputs(
+      DoubleSupplier inputX, DoubleSupplier inputY, LinearVelocity maxSpeed) {
+    double xIn = deadzone(inputX.getAsDouble(), 0.05);
+    double yIn = deadzone(inputY.getAsDouble(), 0.05);
+
+    LinearVelocity vX, vY;
+    double vMag = Math.sqrt(xIn * xIn + yIn * yIn);
+    if (vMag > 1) {
+      vX = maxSpeed.times(xIn / vMag);
+      vY = maxSpeed.times(yIn / vMag);
+    } else {
+      vX = maxSpeed.times(xIn);
+      vY = maxSpeed.times(yIn);
+    }
+    Logger.recordOutput("AlignCommands/vXin", vX);
+    Logger.recordOutput("AlignCommands/vYin", vY);
+    return new Pair<>(vX, vY);
   }
 }

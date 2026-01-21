@@ -301,6 +301,8 @@ public class RobotContainer {
   private GenericEntry kIEntry;
   private GenericEntry kShooterEntry;
   private GenericEntry kDisplacementXEntry;
+  private GenericEntry kDisplacementYEntry;
+  private GenericEntry kDisplacementZEntry;
 
   public void initializeTunables() {
     // Create entries for Kp and Ki, with default values
@@ -314,12 +316,22 @@ public class RobotContainer {
             .add("Ki", 0.001) // Key "Ki", default 0.001
             .withWidget("NumberSlider")
             .getEntry();
-    kShooterEntry = tuningTab.add("Kshooter", 5.125).withWidget("NumberSlider").getEntry();
+    kShooterEntry = tuningTab.add("Kshooter", 31.1018931640).withWidget("NumberSlider").getEntry();
     kDisplacementXEntry =
         tuningTab
             .add(
                 "displacementX",
-                Inches.of(16 + 22.2).in(Meters)) // bumper is 16, width of hub is 44.4
+                Inches.of((16 + 22.2)).in(Meters)) // bumper is 16, width of hub is 44.4
+            .withWidget("NumberSlider")
+            .getEntry();
+    kDisplacementYEntry =
+        tuningTab
+            .add("displacementY", Inches.of(0).in(Meters))
+            .withWidget("NumberSlider")
+            .getEntry();
+    kDisplacementZEntry =
+        tuningTab
+            .add("displacementZ", Inches.of(72).in(Meters)) // hub is 72 inches tall
             .withWidget("NumberSlider")
             .getEntry();
   }
@@ -345,56 +357,100 @@ public class RobotContainer {
 
   public double getKshooter() {
     try {
-      return kShooterEntry.getDouble(5.125);
+      return kShooterEntry.getDouble(31.1018931640);
     } catch (Exception e) {
       DriverStation.reportError("Failed to create resetDisplacement command", e.getStackTrace());
-      return 5.125; // catches exception in command creation during boot, prevents BOOT LOOP
+      return 31.1018931640; // catches exception in command creation during boot, prevents BOOT LOOP
     }
   }
 
   public double getDisplacementX() {
     try {
-      Logger.recordOutput("displacementX", kDisplacementXEntry.getDouble(67));
+      Logger.recordOutput(
+          "displacementX", kDisplacementXEntry.getDouble(Inches.of((16 + 22.2)).in(Meters)));
       return kDisplacementXEntry.getDouble(
-          Inches.of(16 + 22.2).in(Meters)); // bumper is 16, width of hub is 44.4
+          Inches.of((16 + 22.2)).in(Meters)); // bumper is 16, width of hub is 44.4
     } catch (Exception e) {
       DriverStation.reportError("Failed to create resetDisplacement command", e.getStackTrace());
-      return Inches.of(16 + 22.2)
+      return Inches.of((16 + 22.2))
+          .in(Meters); // catches exception in command creation during boot, prevents BOOT LOOP
+    }
+  }
+
+  public double getDisplacementY() {
+    try {
+      Logger.recordOutput("displacementY", kDisplacementYEntry.getDouble(0));
+      return kDisplacementYEntry.getDouble(Inches.of(0).in(Meters));
+    } catch (Exception e) {
+      DriverStation.reportError("Failed to create resetDisplacement command", e.getStackTrace());
+      return Inches.of(0)
+          .in(Meters); // catches exception in command creation during boot, prevents BOOT LOOP
+    }
+  }
+
+  public double getDisplacementZ() {
+    try {
+      Logger.recordOutput("displacementX", kDisplacementZEntry.getDouble(Inches.of(72).in(Meters)));
+      return kDisplacementZEntry.getDouble(
+          Inches.of(72).in(Meters)); // bumper is 16, width of hub is 44.4
+    } catch (Exception e) {
+      DriverStation.reportError("Failed to create resetDisplacement command", e.getStackTrace());
+      return Inches.of(72)
           .in(Meters); // catches exception in command creation during boot, prevents BOOT LOOP
     }
   }
 
   public void manualButtonBindings() {
     // drivetrain controls
-    drive.setDefaultCommand(
-        DriveCommands.joystickDrive(
-            drive,
-            () ->
-                -driverController.getLeftY()
-                    * Math.pow(Math.abs(driverController.getLeftY()), 1.2 - 1),
-            () ->
-                -driverController.getLeftX()
-                    * Math.pow(Math.abs(driverController.getLeftX()), 1.2 - 1),
-            () -> (0.5) * -driverController.getRawAxis(3)));
+    // drive.setDefaultCommand();
     driverController.y().onTrue(drive.resetGyro());
 
-    driverController.x().onTrue(AlignCommands.resetDisplacement(drive, () -> getDisplacementX()));
+    driverController
+        .x()
+        .onTrue(
+            AlignCommands.resetDisplacement(
+                drive,
+                () -> getDisplacementX(),
+                () -> getDisplacementY(),
+                () -> getDisplacementZ()));
 
     driverController
         .a()
         .whileTrue(AlignCommands.testAlignStationary(drive, shooter, () -> getKshooter()));
 
+    // driverController
+    //     .b()
+    //     .whileTrue(
+    //         AlignCommands.alignMoving(
+    //             drive,
+    //             shooter,
+    //             () -> getKshooter(),
+    //             () -> getDisplacementX(),
+    //             MetersPerSecond.of(3.0),
+    //             () -> -driverController.getLeftY(),
+    //             () -> -driverController.getLeftX()));
     driverController
         .b()
         .whileTrue(
-            AlignCommands.alignMoving(
+            AlignCommands.testInputShape(
                 drive,
                 shooter,
                 () -> getKshooter(),
-                () -> getDisplacementX(),
-                MetersPerSecond.of(3.0),
+                MetersPerSecond.of(2.0),
                 () -> -driverController.getLeftY(),
                 () -> -driverController.getLeftX()));
+    driverController
+        .b()
+        .whileFalse(
+            DriveCommands.joystickDrive(
+                drive,
+                () ->
+                    -driverController.getLeftY()
+                        * Math.pow(Math.abs(driverController.getLeftY()), 1.2 - 1),
+                () ->
+                    -driverController.getLeftX()
+                        * Math.pow(Math.abs(driverController.getLeftX()), 1.2 - 1),
+                () -> (0.5) * -driverController.getRightX()));
 
     // driver indexer controls
     driverController
@@ -403,28 +459,6 @@ public class RobotContainer {
             indexer.setIndexerVelocity(
                 () -> IndexerConstants.INDEXER_INTAKE_VELOCITY)) // TODO: update value later
         .onFalse(indexer.setIndexerVelocity(() -> IndexerConstants.INDEXER_NO_VELOCITY));
-
-    // driver shooter controls
-    driverController
-        .rightTrigger()
-        .whileTrue(
-            shooter.setShooterVelocityCommand(
-                () -> ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY,
-                () ->
-                    ShooterConstants.SHOOTER_HIGH_GOAL_VELOCITY
-                        .unaryMinus())) // TODO: update value later to shoot in
-        // high goal
-        .onFalse(shooter.setShooterVelocityCommand(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
-    driverController
-        .leftTrigger()
-        .whileTrue(
-            shooter.setShooterVelocityCommand(
-                () -> ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY,
-                () ->
-                    ShooterConstants.SHOOTER_LOW_GOAL_VELOCITY
-                        .unaryMinus())) // TODO: update value later to shoot in
-        // low goal
-        .onFalse(shooter.setShooterVelocityCommand(() -> ShooterConstants.SHOOTER_NO_VELOCITY));
 
     // operator one button intake
     operatorController
