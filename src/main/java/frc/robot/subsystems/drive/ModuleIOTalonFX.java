@@ -73,9 +73,9 @@ public abstract class ModuleIOTalonFX extends ModuleIO {
     this.constants = constants;
     this.drivePIDTunableNumbers = drivePIDTunableNumbers;
 
-    driveTalon = new TalonFX(constants.DriveMotorId, TunerConstants.DrivetrainConstants.CANBusName);
-    turnTalon = new TalonFX(constants.SteerMotorId, TunerConstants.DrivetrainConstants.CANBusName);
-    cancoder = new CANcoder(constants.EncoderId, TunerConstants.DrivetrainConstants.CANBusName);
+    driveTalon = new TalonFX(constants.DriveMotorId, TunerConstants.kCANBus);
+    turnTalon = new TalonFX(constants.SteerMotorId, TunerConstants.kCANBus);
+    cancoder = new CANcoder(constants.EncoderId, TunerConstants.kCANBus);
 
     // Configure drive motor
     var driveConfig = getDriveConfiguration(constants);
@@ -149,6 +149,12 @@ public abstract class ModuleIOTalonFX extends ModuleIO {
   public void reconfigureTurnMotor() {
     var turnConfig = getTurnConfiguration(constants);
     tryUntilOk(5, () -> turnTalon.getConfigurator().apply(turnConfig, 0.25));
+  }
+
+  @Override
+  public void reconfigureDriveMotor() {
+    var driveConfig = getDriveConfiguration(constants);
+    tryUntilOk(5, () -> driveTalon.getConfigurator().apply(driveConfig, 0.25));
   }
 
   private TalonFXConfiguration getDriveConfiguration(

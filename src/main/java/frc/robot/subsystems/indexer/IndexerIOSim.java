@@ -18,7 +18,7 @@ public class IndexerIOSim extends IndexerIOTalonFX {
       new FlywheelSim(
           LinearSystemId.createFlywheelSystem(
               DCMotor.getKrakenX60(1),
-              IndexerSimConstants.MOI.in(KilogramSquareMeters),
+              IndexerConstants.MOI.in(KilogramSquareMeters),
               IndexerConstants.IndexerSimConstants.GEARING),
           DCMotor.getKrakenX60(1));
 

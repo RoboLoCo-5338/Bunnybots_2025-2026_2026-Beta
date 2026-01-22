@@ -43,15 +43,15 @@ public class ShooterIOSpark extends ShooterIO {
           ShooterConstants.SHOOTER_MOTOR_KS, ShooterConstants.SHOOTER_MOTOR_KV);
   LaserCan laserCan = new LaserCan(ShooterConstants.LASERCAN_ID);
   private final LoggedTunableNumber kP =
-      new LoggedTunableNumber("Shooter kP", ShooterConstants.SHOOTER_MOTOR_VELOCITY_KP);
+      new LoggedTunableNumber("Shooter/kP", ShooterConstants.SHOOTER_MOTOR_VELOCITY_KP);
   private final LoggedTunableNumber kI =
-      new LoggedTunableNumber("Shooter kI", ShooterConstants.SHOOTER_MOTOR_VELOCITY_KI);
+      new LoggedTunableNumber("Shooter/kI", ShooterConstants.SHOOTER_MOTOR_VELOCITY_KI);
   private final LoggedTunableNumber kD =
-      new LoggedTunableNumber("Shooter kD", ShooterConstants.SHOOTER_MOTOR_VELOCITY_KD);
+      new LoggedTunableNumber("Shooter/kD", ShooterConstants.SHOOTER_MOTOR_VELOCITY_KD);
   private final LoggedTunableNumber kV =
-      new LoggedTunableNumber("Shooter kV", ShooterConstants.SHOOTER_MOTOR_KV);
+      new LoggedTunableNumber("Shooter/kV", ShooterConstants.SHOOTER_MOTOR_KV);
   private final LoggedTunableNumber kS =
-      new LoggedTunableNumber("Shooter kS", ShooterConstants.SHOOTER_MOTOR_KS);
+      new LoggedTunableNumber("Shooter/kS", ShooterConstants.SHOOTER_MOTOR_KS);
 
   public ShooterIOSpark(int shooterNum) {
     shooterMotor =
@@ -148,7 +148,7 @@ public class ShooterIOSpark extends ShooterIO {
         (value) -> inputs.shooterTemperatureK = Celsius.of(value));
 
     LoggedTunableNumber.ifChanged(
-        1,
+        9,
         () ->
             shooterMotor.configure(
                 getShooterConfig(), ResetMode.kResetSafeParameters, PersistMode.kPersistParameters),

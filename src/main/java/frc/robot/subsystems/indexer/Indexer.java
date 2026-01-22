@@ -24,7 +24,7 @@ import org.littletonrobotics.junction.Logger;
 
 public class Indexer extends SubsystemBase implements SysIdSubsystem.SysIdSingleSubsystem {
   public final IndexerIO io;
-  private final IndexerIOInputsAutoLogged inputs = new IndexerIOInputsAutoLogged();
+  public final IndexerIOInputsAutoLogged inputs = new IndexerIOInputsAutoLogged();
 
   private final Alert indexerDisconnectedAlert =
       new Alert("Indexer motor disconnected!", AlertType.kError);
@@ -36,7 +36,7 @@ public class Indexer extends SubsystemBase implements SysIdSubsystem.SysIdSingle
     this.sysIdRoutine =
         new SysIdRoutine(
             new SysIdRoutine.Config(
-                Velocity.ofBaseUnits(0.2, Volts.per(Second)),
+                Velocity.ofBaseUnits(0.4, Volts.per(Second)),
                 Voltage.ofBaseUnits(2, Volts),
                 Second.of(15),
                 (state) -> Logger.recordOutput("Indexer/SysIdState", state.toString())),

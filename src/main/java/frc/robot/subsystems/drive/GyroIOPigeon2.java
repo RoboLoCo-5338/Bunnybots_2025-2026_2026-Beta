@@ -29,7 +29,7 @@ public class GyroIOPigeon2 extends GyroIO {
   private final Pigeon2 pigeon =
       new Pigeon2(
           TunerConstants.DrivetrainConstants.Pigeon2Id,
-          TunerConstants.DrivetrainConstants.CANBusName);
+          TunerConstants.kCANBus);
   private final StatusSignal<Angle> yaw = pigeon.getYaw();
   private final Queue<Double> yawPositionQueue;
   private final Queue<Double> yawTimestampQueue;
@@ -59,5 +59,10 @@ public class GyroIOPigeon2 extends GyroIO {
             .toArray(Rotation2d[]::new);
     yawTimestampQueue.clear();
     yawPositionQueue.clear();
+  }
+
+  @Override
+  public void resetRotation() {
+    pigeon.setYaw(0);
   }
 }

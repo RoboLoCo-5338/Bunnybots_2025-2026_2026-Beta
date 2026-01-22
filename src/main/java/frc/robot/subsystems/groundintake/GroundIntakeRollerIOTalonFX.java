@@ -42,15 +42,20 @@ public class GroundIntakeRollerIOTalonFX extends GroundIntakeRollerIO {
   final VoltageOut groundIntakeRollerOpenLoop = new VoltageOut(0.0);
 
   private final LoggedTunableNumber kP =
-      new LoggedTunableNumber("Indexer kP", GroundIntakeRollerConstants.GROUNDINTAKE_ROLLER_KP);
+      new LoggedTunableNumber(
+          "Ground Intake Roller/kP", GroundIntakeRollerConstants.GROUNDINTAKE_ROLLER_KP);
   private final LoggedTunableNumber kI =
-      new LoggedTunableNumber("Indexer kI", GroundIntakeRollerConstants.GROUNDINTAKE_ROLLER_KI);
+      new LoggedTunableNumber(
+          "Ground Intake Roller/kI", GroundIntakeRollerConstants.GROUNDINTAKE_ROLLER_KI);
   private final LoggedTunableNumber kD =
-      new LoggedTunableNumber("Indexer kD", GroundIntakeRollerConstants.GROUNDINTAKE_ROLLER_KD);
+      new LoggedTunableNumber(
+          "Ground Intake Roller/kD", GroundIntakeRollerConstants.GROUNDINTAKE_ROLLER_KD);
   private final LoggedTunableNumber kV =
-      new LoggedTunableNumber("Indexer kV", GroundIntakeRollerConstants.GROUNDINTAKE_ROLLER_KV);
+      new LoggedTunableNumber(
+          "Ground Intake Roller/kV", GroundIntakeRollerConstants.GROUNDINTAKE_ROLLER_KV);
   private final LoggedTunableNumber kS =
-      new LoggedTunableNumber("Indexer kS", GroundIntakeRollerConstants.GROUNDINTAKE_ROLLER_KS);
+      new LoggedTunableNumber(
+          "Ground Intake Roller/kS", GroundIntakeRollerConstants.GROUNDINTAKE_ROLLER_KS);
 
   public GroundIntakeRollerIOTalonFX() {
 
