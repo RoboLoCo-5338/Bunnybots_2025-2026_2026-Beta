@@ -122,7 +122,14 @@ public class ProjectileTrajectoryUtils {
     Logger.recordOutput("MovingTrajectory/azimuth", azimuth);
     AngularVelocity omega =
         calcRobotAngularVelocity(
-            botVelocityX, botVelocityY, timeOfFlight, dfdt, targetPos, shooterAltitude);
+            botVelocityX,
+            botVelocityY,
+            botAccelX,
+            botAccelY,
+            timeOfFlight,
+            dfdt,
+            targetPos,
+            shooterAltitude);
     Logger.recordOutput("MovingTrajectory/omega", omega);
     return new MovingTrajectorySolution(azimuth, omega, shooterVelocity, shooterAcceleration);
   }
@@ -177,7 +184,14 @@ public class ProjectileTrajectoryUtils {
     Logger.recordOutput("MovingTrajectory/azimuth", azimuth);
     AngularVelocity omega =
         calcRobotAngularVelocity(
-            botVelocityX, botVelocityY, timeOfFlight, dfdt, targetPos, shooterAltitude);
+            botVelocityX,
+            botVelocityY,
+            MetersPerSecondPerSecond.of(0),
+            MetersPerSecondPerSecond.of(0),
+            timeOfFlight,
+            dfdt,
+            targetPos,
+            shooterAltitude);
     Logger.recordOutput("MovingTrajectory/omega", omega);
     return new MovingTrajectorySolution(azimuth, omega, shooterVelocity, shooterAcceleration);
   }
@@ -247,16 +261,24 @@ public class ProjectileTrajectoryUtils {
   public static AngularVelocity calcRobotAngularVelocity(
       LinearVelocity botVelocityX,
       LinearVelocity botVelocityY,
+      LinearAcceleration botAccelX,
+      LinearAcceleration botAccelY,
       Time timeOfFlight,
       double dfdt,
       Translation3d targetPos,
       Angle shooterAltitude) {
-    double g = GRAVITY.in(MetersPerSecondPerSecond);
-    double term1 = g / (2 * Math.sin(shooterAltitude.in(Radians)));
-    double term2 =
-        -targetPos.getZ()
-            / (Math.pow(timeOfFlight.in(Seconds), 2.0) * Math.sin(shooterAltitude.in(Radians)));
-    return RadiansPerSecond.of(dfdt * (term1 + term2));
+    double deltaY = targetPos.getY() - timeOfFlight.in(Seconds) * botVelocityY.in(MetersPerSecond);
+    double deltaX = targetPos.getX() - timeOfFlight.in(Seconds) * botVelocityX.in(MetersPerSecond);
+    double vX = botVelocityX.in(MetersPerSecond);
+    double vY = botVelocityY.in(MetersPerSecond);
+    double aX = botAccelX.in(MetersPerSecondPerSecond);
+    double aY = botAccelY.in(MetersPerSecondPerSecond);
+    double tF = timeOfFlight.in(Seconds);
+    double numTerm1 = (vY - dfdt * vY - tF * aY) * deltaX;
+    double numTerm2 = (vX - dfdt * vX - tF * aX) * deltaY;
+    double denominator = Math.pow(deltaX, 2) + Math.pow(deltaY, 2);
+    AngularVelocity omega = RadiansPerSecond.of((numTerm1 - numTerm2) / denominator);
+    return omega.times(-1); // idk why this is necessary, could be field orientation
   }
 
   /**

@@ -299,6 +299,7 @@ public class RobotContainer {
   private ShuffleboardTab tuningTab = Shuffleboard.getTab("Tuning");
   private GenericEntry kPEntry;
   private GenericEntry kIEntry;
+  private GenericEntry kDEntry;
   private GenericEntry kShooterEntry;
   private GenericEntry kDisplacementXEntry;
   private GenericEntry kDisplacementYEntry;
@@ -314,6 +315,11 @@ public class RobotContainer {
     kIEntry =
         tuningTab
             .add("Ki", 0.001) // Key "Ki", default 0.001
+            .withWidget("NumberSlider")
+            .getEntry();
+    kDEntry =
+        tuningTab
+            .add("Kd", 0.001) // Key "Ki", default 0.001
             .withWidget("NumberSlider")
             .getEntry();
     kShooterEntry = tuningTab.add("Kshooter", 31.1018931640).withWidget("NumberSlider").getEntry();
@@ -349,6 +355,14 @@ public class RobotContainer {
   public double getKi() {
     try {
       return kIEntry.getDouble(0.001);
+    } catch (Exception e) {
+      DriverStation.reportError("Failed to create resetDisplacement command", e.getStackTrace());
+      return 0.001; // catches exception in command creation during boot, prevents BOOT LOOP
+    }
+  }
+  public double getKd() {
+    try {
+      return kDEntry.getDouble(0.001);
     } catch (Exception e) {
       DriverStation.reportError("Failed to create resetDisplacement command", e.getStackTrace());
       return 0.001; // catches exception in command creation during boot, prevents BOOT LOOP
@@ -438,7 +452,14 @@ public class RobotContainer {
                 () -> getKshooter(),
                 MetersPerSecond.of(2.0),
                 () -> -driverController.getLeftY(),
-                () -> -driverController.getLeftX()));
+                () -> -driverController.getLeftX(),
+                () -> getKp(),
+                () -> getKi(),
+                () -> getKd()
+                
+                )
+                
+                );
     driverController
         .b()
         .whileFalse(
