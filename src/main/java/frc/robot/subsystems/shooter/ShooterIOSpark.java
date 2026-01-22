@@ -174,6 +174,7 @@ public class ShooterIOSpark extends ShooterIO {
     shooterMotor.setVoltage(voltage);
   }
 
+  @SuppressWarnings("removal")
   @Override
   public void setShooterVelocity(AngularVelocity velocity) {
     shooterClosedLoopController.setReference(

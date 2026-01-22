@@ -122,6 +122,7 @@ public final class PhoenixUtil {
    * <h4>Note:This function is skipped when running on a real robot, ensuring no impact on constants
    * used on real robot hardware.</h4>
    */
+  @SuppressWarnings("rawtypes")
   public static SwerveModuleConstants regulateModuleConstantForSimulation(
       SwerveModuleConstants<?, ?, ?> moduleConstants) {
     // Skip regulation if running on a real robot
