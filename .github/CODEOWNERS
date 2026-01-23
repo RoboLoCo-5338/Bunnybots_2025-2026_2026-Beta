@@ -1,0 +1,48 @@
+# Github Specific Files
+/.github/ @Advay17
+
+# Pathplanner Specific Files
+/src/main/deploy @shreshtaparthaje
+/src/main/java/frc/robot/util/LocalADStarAK.java @shreshtaparthaje
+
+# Controls Specific Files
+/src/main/java/frc/robot/RobotContainer.java @shreshtaparthaje
+/src/main/java/frc/robot/commands/controls/ @shreshtaparthaje
+
+# Vision Specific Files
+/src/main/java/frc/robot/subsystems/vision/ @314PiGuy
+
+# Mechanism Specific Files
+/src/main/java/frc/robot/subsystems/drive/ @Advay17
+/src/main/java/frc/robot/commands/DriveCommands.java @Advay17
+tuner-swerve-project.json @Advay17
+/src/main/java/frc/robot/subsystems/groundintake/ @Advay17
+/src/main/java/frc/robot/subsystems/indexer/ @Advay17
+/src/main/java/frc/robot/subsystems/shooter/ @Advay17
+/src/main/java/frc/robot/subsystems/led/ @Advay17
+/src/main/java/frc/robot/subsystems/SysIdSubsystem.java @Advay17
+/assets/ @Advay17
+
+/src/main/java/frc/robot/generated/TunerConstants.java @Advay17
+/src/main/java/frc/robot/util/SparkUtil.java @Advay17
+/src/main/java/frc/robot/util/PhoenixUtil.java @Advay17
+
+# Sim Specific Files
+/src/main/java/frc/robot/sim/ @Advay17
+
+# LED Specific Files
+/src/main/java/frc/robot/commands/led/ @Advay17
+
+# General Files
+/src/main/java/frc/robot/Constants.java @Advay17 @Rohit1046
+/src/main/java/frc/robot/Main.java @Advay17 @Rohit1046
+/src/main/java/frc/robot/util/LoggedTunableNumber.java @Advay17 @Rohit1046
+.gitignore @Advay17 @Rohit1046
+built.gradle @Advay17 @Rohit1046
+settings.gradle @Advay17 @Rohit1046
+gradlew @Advay17 @Rohit1046
+gradlew.bat @Advay17 @Rohit1046
+/gradle/ @Advay17 @Rohit1046
+
+# Vendordeps
+/vendordeps/ @Advay17
