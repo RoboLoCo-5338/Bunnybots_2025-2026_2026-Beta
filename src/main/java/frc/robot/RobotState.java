@@ -129,7 +129,6 @@ public class RobotState {
                   MetersPerSecond.of(0),
                   MetersPerSecond.of(0),
                   timeOfFlight,
-                  shooterVelocity,
                   new Translation3d(3, 4, 2.0),
                   Degrees.of(60));
           Logger.recordOutput("Trajectory/Azimuth", robotHeadingAzimuth.in(Degrees));

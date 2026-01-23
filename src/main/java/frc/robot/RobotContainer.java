@@ -309,20 +309,20 @@ public class RobotContainer {
     // Create entries for Kp and Ki, with default values
     kPEntry =
         tuningTab
-            .add("Kp", 0.01) // Key "Kp", default 0.01
+            .add("Kp", 9.0) // Key "Kp", default 0.01
             .withWidget("NumberSlider") // Use a slider widget
             .getEntry();
     kIEntry =
         tuningTab
-            .add("Ki", 0.001) // Key "Ki", default 0.001
+            .add("Ki", 0.05) // Key "Ki", default 0.001
             .withWidget("NumberSlider")
             .getEntry();
     kDEntry =
         tuningTab
-            .add("Kd", 0.001) // Key "Ki", default 0.001
+            .add("Kd", 0.4) // Key "Kd", default 0.001
             .withWidget("NumberSlider")
             .getEntry();
-    kShooterEntry = tuningTab.add("Kshooter", 31.1018931640).withWidget("NumberSlider").getEntry();
+    kShooterEntry = tuningTab.add("Kshooter", 31.9).withWidget("NumberSlider").getEntry();
     kDisplacementXEntry =
         tuningTab
             .add(
@@ -360,6 +360,7 @@ public class RobotContainer {
       return 0.001; // catches exception in command creation during boot, prevents BOOT LOOP
     }
   }
+
   public double getKd() {
     try {
       return kDEntry.getDouble(0.001);
@@ -455,11 +456,8 @@ public class RobotContainer {
                 () -> -driverController.getLeftX(),
                 () -> getKp(),
                 () -> getKi(),
-                () -> getKd()
-                
-                )
-                
-                );
+                () -> getKd()));
+
     driverController
         .b()
         .whileFalse(

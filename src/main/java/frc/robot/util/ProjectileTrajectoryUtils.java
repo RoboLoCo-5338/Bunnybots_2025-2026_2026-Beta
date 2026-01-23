@@ -37,7 +37,7 @@ public class ProjectileTrajectoryUtils {
         botVelocity.plus(shooterVelocity.times(Math.cos(shooterAltitude.in(Radians))));
     LinearVelocity vZ = shooterVelocity.times(Math.sin(shooterAltitude.in(Radians)));
 
-    double minDist = Double.MAX_VALUE;
+    double minDist = 1;
     for (int i = 0; i < simSteps; i++) {
       double t = (i + 1.0) * (1.0 / simSteps) * 2.0 * targetPos.getX() / vX.in(MetersPerSecond);
       double x = vX.in(MetersPerSecond) * t;
@@ -48,7 +48,7 @@ public class ProjectileTrajectoryUtils {
               Math.pow(x - targetPos.getX(), 2)
                   + Math.pow(y - targetPos.getY(), 2)
                   + Math.pow(z - targetPos.getZ(), 2));
-      if (dist < minDist) {
+      if (dist < minDist && Math.abs(targetPos.getZ() - z) < 0.1) {
         minDist = dist;
       }
     }
@@ -118,7 +118,7 @@ public class ProjectileTrajectoryUtils {
     Logger.recordOutput("MovingTrajectory/shooterAcceleration", shooterAcceleration);
     Angle azimuth =
         calcRobotHeadingAzimuth(
-            botVelocityX, botVelocityY, timeOfFlight, shooterVelocity, targetPos, shooterAltitude);
+            botVelocityX, botVelocityY, timeOfFlight, targetPos, shooterAltitude);
     Logger.recordOutput("MovingTrajectory/azimuth", azimuth);
     AngularVelocity omega =
         calcRobotAngularVelocity(
@@ -180,7 +180,7 @@ public class ProjectileTrajectoryUtils {
     Logger.recordOutput("MovingTrajectory/shooterAcceleration", shooterAcceleration);
     Angle azimuth =
         calcRobotHeadingAzimuth(
-            botVelocityX, botVelocityY, timeOfFlight, shooterVelocity, targetPos, shooterAltitude);
+            botVelocityX, botVelocityY, timeOfFlight, targetPos, shooterAltitude);
     Logger.recordOutput("MovingTrajectory/azimuth", azimuth);
     AngularVelocity omega =
         calcRobotAngularVelocity(
@@ -226,7 +226,7 @@ public class ProjectileTrajectoryUtils {
     LinearVelocity shooterVelocity = calcShooterVelocity(timeOfFlight, targetPos, shooterAltitude);
     Angle azimuth =
         calcRobotHeadingAzimuth(
-            botVelocityX, botVelocityY, timeOfFlight, shooterVelocity, targetPos, shooterAltitude);
+            botVelocityX, botVelocityY, timeOfFlight, targetPos, shooterAltitude);
     return new FixedTrajectorySolution(azimuth, shooterVelocity);
   }
 
@@ -236,7 +236,6 @@ public class ProjectileTrajectoryUtils {
    * @param botVelocityX X-velocity of the Robot, FOC, in meters
    * @param botVelocityY Y-velocity of the Robot, FOC, in meters
    * @param timeOfFlight duration of the delta-t from launch to target
-   * @param shooterVelocity exit velocity from the shooter
    * @param targetPos 3d displacement of the target, FOC, in meters
    * @param shooterAltitude Angle of the fixed shooter from horizontal
    * @return Time of flight for the projectile from launch to target
@@ -245,7 +244,6 @@ public class ProjectileTrajectoryUtils {
       LinearVelocity botVelocityX,
       LinearVelocity botVelocityY,
       Time timeOfFlight,
-      LinearVelocity shooterVelocity,
       Translation3d targetPos,
       Angle shooterAltitude) {
     double g = GRAVITY.in(MetersPerSecondPerSecond);
@@ -278,7 +276,13 @@ public class ProjectileTrajectoryUtils {
     double numTerm2 = (vX - dfdt * vX - tF * aX) * deltaY;
     double denominator = Math.pow(deltaX, 2) + Math.pow(deltaY, 2);
     AngularVelocity omega = RadiansPerSecond.of((numTerm1 - numTerm2) / denominator);
-    return omega.times(-1); // idk why this is necessary, could be field orientation
+    // return omega.times(-1); // idk why this is necessary, could be field orientation
+    double h = 1e-4;
+    Angle azimuth1 = Radians.of(Math.atan2(deltaY, deltaX));
+    double deltaY2 = (targetPos.getY() - vY * h) - (tF + dfdt * h) * (vY + aY * h);
+    double deltaX2 = (targetPos.getX() - vX * h) - (tF + dfdt * h) * (vX + aX * h);
+    Angle azimuth2 = Radians.of(Math.atan2(deltaY2, deltaX2));
+    return RadiansPerSecond.of((azimuth2.in(Radians) - azimuth1.in(Radians)) / h);
   }
 
   /**
