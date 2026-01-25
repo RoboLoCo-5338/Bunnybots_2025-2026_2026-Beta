@@ -17,12 +17,12 @@ public class GroundIntakePivotIO {
 
   @AutoLog
   public static class GroundIntakePivotIOInputs {
-    public AngularVelocity groundIntakePivotVelocityRadsPerSec = RotationsPerSecond.of(Double.NaN);
-    public Voltage groundIntakePivotAppliedVolts = Volts.of(Double.NaN);
-    public Current groundIntakePivotCurrentAmps = Amps.of(Double.NaN);
+    public AngularVelocity odometryDrivePositiongroundIntakePivotVelocity = RotationsPerSecond.of(Double.NaN);
+    public Voltage groundIntakePivotAppliedVoltage = Volts.of(Double.NaN);
+    public Current groundIntakePivotCurrent = Amps.of(Double.NaN);
     public boolean groundIntakePivotConnected = false;
-    public Temperature groundIntakePivotTemperatureK = Celsius.of(Double.NaN);
-    public Angle groundIntakePivotPositionRads = Rotations.of(Double.NaN);
+    public Temperature groundIntakePivotTemperature = Celsius.of(Double.NaN);
+    public Angle groundIntakePivotPosition = Rotations.of(Double.NaN);
   }
 
   public void updateInputs(GroundIntakePivotIOInputs inputs) {}

@@ -64,7 +64,7 @@ public class Module {
     int sampleCount = inputs.odometryTimestamps.length; // All signals are sampled together
     odometryPositions = new SwerveModulePosition[sampleCount];
     for (int i = 0; i < sampleCount; i++) {
-      double positionMeters = inputs.odometryDrivePositionsRad[i] * constants.WheelRadius;
+      double positionMeters = inputs.odometryDrivePositions[i] * constants.WheelRadius;
       Rotation2d angle = inputs.odometryTurnPositions[i];
       odometryPositions[i] = new SwerveModulePosition(positionMeters, angle);
     }
@@ -105,12 +105,12 @@ public class Module {
 
   /** Returns the current drive position of the module in meters. */
   public double getPositionMeters() {
-    return inputs.drivePositionRad.in(Radians) * constants.WheelRadius;
+    return inputs.drivePosition.in(Radians) * constants.WheelRadius;
   }
 
   /** Returns the current drive velocity of the module in meters per second. */
   public double getVelocityMetersPerSec() {
-    return inputs.driveVelocityRadPerSec.in(RadiansPerSecond) * constants.WheelRadius;
+    return inputs.driveVelocity.in(RadiansPerSecond) * constants.WheelRadius;
   }
 
   /** Returns the module position (turn angle and drive position). */
@@ -135,12 +135,12 @@ public class Module {
 
   /** Returns the module position in radians. */
   public double getWheelRadiusCharacterizationPosition() {
-    return inputs.drivePositionRad.in(Radians);
+    return inputs.drivePosition.in(Radians);
   }
 
   /** Returns the module velocity in rotations/sec (Phoenix native units). */
   public double getFFCharacterizationVelocity() {
-    return inputs.driveVelocityRadPerSec.in(RotationsPerSecond);
+    return inputs.driveVelocity.in(RotationsPerSecond);
   }
 
   public void reconfigureDriveMotor() {

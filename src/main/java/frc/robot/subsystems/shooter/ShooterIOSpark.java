@@ -129,23 +129,23 @@ public class ShooterIOSpark extends ShooterIO {
     sparkUtil.ifOk(
         shooterMotor,
         shooterEncoder::getPosition,
-        (value) -> inputs.shooterPositionRads = Rotations.of(value));
+        (value) -> inputs.shooterPosition = Rotations.of(value));
     sparkUtil.ifOk(
         shooterMotor,
         shooterEncoder::getVelocity,
-        (value) -> inputs.shooterVelocityRadPerSec = RPM.of(value));
+        (value) -> inputs.shooterVelocity = RPM.of(value));
     sparkUtil.ifOk(
         shooterMotor,
         new DoubleSupplier[] {shooterMotor::getAppliedOutput, shooterMotor::getBusVoltage},
-        (values) -> inputs.shooterAppliedVolts = Volts.of(values[0] * values[1]));
+        (values) -> inputs.shooterAppliedVoltage = Volts.of(values[0] * values[1]));
     sparkUtil.ifOk(
         shooterMotor,
         shooterMotor::getOutputCurrent,
-        (value) -> inputs.shooterCurrentAmps = Amps.of(value));
+        (value) -> inputs.shooterCurrent = Amps.of(value));
     sparkUtil.ifOk(
         shooterMotor,
         shooterMotor::getMotorTemperature,
-        (value) -> inputs.shooterTemperatureK = Celsius.of(value));
+        (value) -> inputs.shooterTemperature = Celsius.of(value));
 
     LoggedTunableNumber.ifChanged(
         1,
@@ -161,11 +161,11 @@ public class ShooterIOSpark extends ShooterIO {
     inputs.shooterConnected = shooter1ConnectedDebouncer.calculate(!sparkUtil.sparkStickyFault);
     Measurement m1 = laserCan.getMeasurement();
     if (m1 == null) {
-      inputs.laserCanDistanceM = Millimeters.of(-1);
+      inputs.laserCanDistance = Millimeters.of(-1);
     } else if (m1.status == LaserCan.LASERCAN_STATUS_VALID_MEASUREMENT) {
-      inputs.laserCanDistanceM = Millimeters.of(m1.distance_mm);
+      inputs.laserCanDistance = Millimeters.of(m1.distance_mm);
     } else if (m1.status == LaserCan.LASERCAN_STATUS_WEAK_SIGNAL) {
-      inputs.laserCanDistanceM = Millimeters.of(-1);
+      inputs.laserCanDistance = Millimeters.of(-1);
     }
   }
 

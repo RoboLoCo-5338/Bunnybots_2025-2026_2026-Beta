@@ -48,7 +48,7 @@ public class ModuleIOTalonFXSim extends ModuleIOTalonFX {
     // Update odometry inputs
     inputs.odometryTimestamps = PhoenixUtil.getSimulationOdometryTimeStamps();
 
-    inputs.odometryDrivePositionsRad =
+    inputs.odometryDrivePositions =
         Arrays.stream(simulation.getCachedDriveWheelFinalPositions())
             .mapToDouble(angle -> angle.in(Radians))
             .toArray();

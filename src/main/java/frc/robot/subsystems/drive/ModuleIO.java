@@ -29,20 +29,20 @@ public class ModuleIO {
   @AutoLog
   static class ModuleIOInputs {
     public boolean driveConnected = false;
-    public Angle drivePositionRad = Radians.of(Double.NaN);
-    public AngularVelocity driveVelocityRadPerSec = RadiansPerSecond.of(Double.NaN);
-    public Voltage driveAppliedVolts = Volts.of(Double.NaN);
-    public Current driveCurrentAmps = Amps.of(Double.NaN);
+    public Angle drivePosition = Radians.of(Double.NaN);
+    public AngularVelocity driveVelocity = RadiansPerSecond.of(Double.NaN);
+    public Voltage driveAppliedVoltage = Volts.of(Double.NaN);
+    public Current driveCurrent = Amps.of(Double.NaN);
 
     public boolean turnConnected = false;
     public boolean turnEncoderConnected = false;
     public Rotation2d turnAbsolutePosition = new Rotation2d();
-    public AngularVelocity turnVelocityRadPerSec = RadiansPerSecond.of(Double.NaN);
-    public Voltage turnAppliedVolts = Volts.of(Double.NaN);
-    public Current turnCurrentAmps = Amps.of(Double.NaN);
+    public AngularVelocity turnVelocity = RadiansPerSecond.of(Double.NaN);
+    public Voltage turnAppliedVoltage = Volts.of(Double.NaN);
+    public Current turnCurrent = Amps.of(Double.NaN);
 
     public double[] odometryTimestamps = new double[] {};
-    public double[] odometryDrivePositionsRad = new double[] {};
+    public double[] odometryDrivePositions = new double[] {};
     public Rotation2d[] odometryTurnPositions = new Rotation2d[] {};
   }
 

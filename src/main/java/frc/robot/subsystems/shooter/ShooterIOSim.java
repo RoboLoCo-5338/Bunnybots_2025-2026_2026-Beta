@@ -56,9 +56,9 @@ public class ShooterIOSim extends ShooterIOSpark implements SimMechanism {
     Logger.recordOutput(
         "Shooter" + shooterNum + "/ShooterVelocity", shooterPhysicsSim.getAngularVelocityRPM());
     Logger.recordOutput(
-        "Shooter" + shooterNum + "/ShooterAppliedVolts", shooterPhysicsSim.getInputVoltage());
+        "Shooter" + shooterNum + "/shooterAppliedVoltage", shooterPhysicsSim.getInputVoltage());
     Logger.recordOutput(
-        "Shooter" + shooterNum + "/ShooterCurrentAmps", shooterPhysicsSim.getCurrentDrawAmps());
+        "Shooter" + shooterNum + "/shooterCurrent", shooterPhysicsSim.getCurrentDrawAmps());
 
     super.updateInputs(inputs);
   }

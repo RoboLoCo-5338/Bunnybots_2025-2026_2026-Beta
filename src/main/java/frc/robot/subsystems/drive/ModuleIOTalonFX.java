@@ -50,13 +50,13 @@ public abstract class ModuleIOTalonFX extends ModuleIO {
   // Inputs from drive motor
   protected final StatusSignal<Angle> drivePosition;
   protected final StatusSignal<AngularVelocity> driveVelocity;
-  protected final StatusSignal<Voltage> driveAppliedVolts;
+  protected final StatusSignal<Voltage> driveAppliedVoltage;
   protected final StatusSignal<Current> driveCurrent;
 
   // Inputs from turn motor
   protected final StatusSignal<Angle> turnAbsolutePosition;
   protected final StatusSignal<AngularVelocity> turnVelocity;
-  protected final StatusSignal<Voltage> turnAppliedVolts;
+  protected final StatusSignal<Voltage> turnAppliedVoltage;
   protected final StatusSignal<Current> turnCurrent;
 
   // Connection debouncers
@@ -98,13 +98,13 @@ public abstract class ModuleIOTalonFX extends ModuleIO {
     // Create drive status signals
     drivePosition = driveTalon.getPosition();
     driveVelocity = driveTalon.getVelocity();
-    driveAppliedVolts = driveTalon.getMotorVoltage();
+    driveAppliedVoltage = driveTalon.getMotorVoltage();
     driveCurrent = driveTalon.getStatorCurrent();
 
     // Create turn status signals
     turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnVelocity = turnTalon.getVelocity();
-    turnAppliedVolts = turnTalon.getMotorVoltage();
+    turnAppliedVoltage = turnTalon.getMotorVoltage();
     turnCurrent = turnTalon.getStatorCurrent();
 
     // Configure periodic frames
@@ -113,10 +113,10 @@ public abstract class ModuleIOTalonFX extends ModuleIO {
     BaseStatusSignal.setUpdateFrequencyForAll(
         50.0,
         driveVelocity,
-        driveAppliedVolts,
+        driveAppliedVoltage,
         driveCurrent,
         turnVelocity,
-        turnAppliedVolts,
+        turnAppliedVoltage,
         turnCurrent);
     ParentDevice.optimizeBusUtilizationForAll(driveTalon, turnTalon);
   }
@@ -125,24 +125,24 @@ public abstract class ModuleIOTalonFX extends ModuleIO {
   public void updateInputs(ModuleIOInputs inputs) {
     // Refresh all signals
     var driveStatus =
-        BaseStatusSignal.refreshAll(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
-    var turnStatus = BaseStatusSignal.refreshAll(turnVelocity, turnAppliedVolts, turnCurrent);
+        BaseStatusSignal.refreshAll(drivePosition, driveVelocity, driveAppliedVoltage, driveCurrent);
+    var turnStatus = BaseStatusSignal.refreshAll(turnVelocity, turnAppliedVoltage, turnCurrent);
     var turnEncoderStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
 
     // Update drive inputs
     inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus.isOK());
-    inputs.drivePositionRad = drivePosition.getValue().div(constants.DriveMotorGearRatio);
-    inputs.driveVelocityRadPerSec = driveVelocity.getValue().div(constants.DriveMotorGearRatio);
-    inputs.driveAppliedVolts = driveAppliedVolts.getValue();
-    inputs.driveCurrentAmps = driveCurrent.getValue();
+    inputs.drivePosition = drivePosition.getValue().div(constants.DriveMotorGearRatio);
+    inputs.driveVelocity = driveVelocity.getValue().div(constants.DriveMotorGearRatio);
+    inputs.driveAppliedVoltage = driveAppliedVoltage.getValue();
+    inputs.driveCurrent = driveCurrent.getValue();
 
     // Update turn inputs
     inputs.turnConnected = turnConnectedDebounce.calculate(turnStatus.isOK());
     inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(turnEncoderStatus.isOK());
     inputs.turnAbsolutePosition = Rotation2d.fromRotations(turnAbsolutePosition.getValueAsDouble());
-    inputs.turnVelocityRadPerSec = turnVelocity.getValue();
-    inputs.turnAppliedVolts = turnAppliedVolts.getValue();
-    inputs.turnCurrentAmps = turnCurrent.getValue();
+    inputs.turnVelocity = turnVelocity.getValue();
+    inputs.turnAppliedVoltage = turnAppliedVoltage.getValue();
+    inputs.turnCurrent = turnCurrent.getValue();
   }
 
   @Override
