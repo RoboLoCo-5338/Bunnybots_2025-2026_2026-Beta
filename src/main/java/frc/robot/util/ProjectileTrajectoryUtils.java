@@ -1,8 +1,16 @@
 package frc.robot.util;
 
 import static edu.wpi.first.units.Units.*;
+import static java.lang.Math.cos;
+import static java.lang.Math.pow;
+import static java.lang.Math.sin;
+import static java.lang.Math.sqrt;
 
+import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.Nat;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.numbers.N1;
+import edu.wpi.first.math.numbers.N2;
 import edu.wpi.first.units.measure.*;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,8 +18,148 @@ import java.util.List;
 import org.littletonrobotics.junction.Logger;
 
 public class ProjectileTrajectoryUtils {
+  public class AirResistanceSolver {
+    public static double g = GRAVITY.in(MetersPerSecondPerSecond);
 
-  private static final int simSteps = 100;
+    public static Matrix<N2, N2> calcJacobian(
+        Matrix<N2, N1> in, double v_x, double v_y, double z, double alpha) {
+      double v_s = in.get(0, 0);
+      double theta = in.get(1, 0);
+      Matrix<N2, N2> J =
+          new Matrix<>(
+              Nat.N2(),
+              Nat.N2(),
+              new double[] {
+                (v_x * sin(alpha) / g)
+                    + ((v_x * pow(sin(alpha), 2) * v_s)
+                        / (g * sqrt(pow(sin(alpha), 2) * pow(v_s, 2) - 2 * g * z)))
+                    + 2 * cos(alpha) * cos(theta) * sin(alpha) * v_s / g
+                    + (cos(alpha) * cos(theta) / g)
+                        * (pow(sin(alpha), 2) * pow(v_s, 3) - 2 * g * z * v_s)
+                        / (sqrt(pow(sin(alpha), 2) * pow(v_s, 4) - 2 * g * z * pow(v_s, 2))),
+                ((v_s * sin(alpha) + sqrt(pow(v_s, 2) * pow(sin(alpha), 2) - 2 * g * z)) / g)
+                    * cos(alpha)
+                    * v_s
+                    * (-sin(theta)),
+                (v_y * sin(alpha) / g)
+                    + ((v_y * pow(sin(alpha), 2) * v_s)
+                        / (g * sqrt(pow(sin(alpha), 2) * pow(v_s, 2) - 2 * g * z)))
+                    + 2 * cos(alpha) * sin(theta) * sin(alpha) * v_s / g
+                    + (cos(alpha) * sin(theta) / g)
+                        * (pow(sin(alpha), 2) * pow(v_s, 3) - 2 * g * z * v_s)
+                        / (sqrt(pow(sin(alpha), 2) * pow(v_s, 4) - 2 * g * z * pow(v_s, 2))),
+                ((v_s * sin(alpha) + sqrt(pow(v_s, 2) * pow(sin(alpha), 2) - 2 * g * z)) / g)
+                    * cos(alpha)
+                    * v_s
+                    * (cos(theta))
+              });
+      return J;
+    }
+
+    public static double dragAccel(double vMag) {
+      double Cd = 0.47; // Drag coefficient for a sphere / fuel
+      Cd = 0.75; // Drag coefficient for a lunite
+      double A =
+          0.15 * 0.15 / 4 * 3.14159265358979323846; // Cross-sectional area in m^2 of a Fuel piece
+      A = 0.0072; // Approximate cross-sectional area of a lunite
+      double rho = 1.225; // Air density in kg/m^3
+      double m = 0.23; // Mass in kg of a Fuel piece
+      m = 0.069; // Mass in kg of a lunite
+      double F_d = 0.5 * Cd * rho * A * vMag * vMag; // Drag force
+      double a_d = F_d / m; // Acceleration due to drag
+      return a_d;
+    }
+
+    public static Matrix<N2, N1> f_airResistance(
+        Matrix<N2, N1> in, double v_x, double v_y, double z, double alpha) {
+      double v_s = in.get(0, 0);
+      double theta = in.get(1, 0);
+      double xPos = 0;
+      double yPos = 0;
+      double zPos = 0;
+      double xVel = v_x + v_s * cos(theta) * cos(alpha);
+      double yVel = v_y + v_s * sin(theta) * cos(alpha);
+      double zVel = v_s * sin(alpha);
+      int simSteps = 500;
+      for (int i = 0; i < simSteps; i++) {
+        double t = ((i + 1.0) / simSteps) * 4.0; // Simulate up to 4 seconds
+        xPos += xVel * (4.0 / simSteps);
+        yPos += yVel * (4.0 / simSteps);
+        zPos += zVel * (4.0 / simSteps);
+
+        double vMag = sqrt(xVel * xVel + yVel * yVel + zVel * zVel);
+        double a_d = dragAccel(vMag);
+        xVel -= (a_d * (xVel / vMag)) * (4.0 / simSteps);
+        yVel -= (a_d * (yVel / vMag)) * (4.0 / simSteps);
+        zVel -= (a_d * (zVel / vMag)) * (4.0 / simSteps);
+        zVel -= g * (4.0 / simSteps); // Gravity effect
+
+        double dist = sqrt(pow(xPos, 2) + pow(yPos, 2) + pow(z - zPos, 2));
+        if (zVel < 0.0 && zPos < z) {
+          return new Matrix<>(Nat.N2(), Nat.N1(), new double[] {xPos, yPos});
+        }
+      }
+      return new Matrix<>(Nat.N2(), Nat.N1(), new double[] {0.0, 0.0});
+    }
+
+    public static double dist(Matrix<N2, N1> v) {
+      return sqrt(pow(v.get(0, 0), 2) + pow(v.get(1, 0), 2));
+    }
+
+    private static final int MAX_ITERS = 10;
+    private static final double tolerance = 0.02;
+
+    public static Matrix<N2, N1> newtonRhapsonSolveAirResistance(
+        LinearVelocity botVelocityX,
+        LinearVelocity botVelocityY,
+        Translation3d targetPos,
+        Angle shooterAltitude) {
+      FixedTrajectorySolution noAirResSolution =
+          calcFiringSolution(
+              botVelocityX, botVelocityY, targetPos, shooterAltitude); // initial guess
+      Matrix<N2, N1> guess =
+          new Matrix<>(
+              Nat.N2(),
+              Nat.N1(),
+              new double[] {
+                noAirResSolution.shooterVelocity.in(MetersPerSecond),
+                noAirResSolution.azimuth.in(Radians)
+              });
+      Matrix<N2, N1> x = guess;
+
+      for (int count = 0; count < MAX_ITERS; count++) {
+        Matrix<N2, N1> f_x =
+            f_airResistance(
+                    x,
+                    botVelocityX.in(MetersPerSecond),
+                    botVelocityY.in(MetersPerSecond),
+                    targetPos.getZ(),
+                    shooterAltitude.in(Radians))
+                .minus(
+                    new Matrix<>(
+                        Nat.N2(), Nat.N1(), new double[] {targetPos.getX(), targetPos.getY()}));
+        if (count % 1 == 0) {
+          System.out.println("\niteration: " + (count + 1) + "  f_x:" + dist(f_x) + "\n");
+          System.out.println(x);
+          System.out.println("\n");
+          System.out.println(f_x);
+          System.out.println("\n");
+        }
+        if (dist(f_x) < tolerance) return x;
+        Matrix<N2, N2> J =
+            calcJacobian(
+                x,
+                botVelocityX.in(MetersPerSecond),
+                botVelocityY.in(MetersPerSecond),
+                targetPos.getZ(),
+                shooterAltitude.in(Radians));
+        x = x.minus(J.inv().times(f_x));
+      }
+      return guess;
+    }
+  }
+
+  private static final int simSteps = 1000;
 
   public static Distance minDistTrajectory(
       LinearVelocity botVelocityX,
@@ -20,6 +168,14 @@ public class ProjectileTrajectoryUtils {
       Angle shooterAltitude,
       Angle azimuth,
       LinearVelocity shooterVelocity) {
+    Logger.recordOutput("minDistTrajectory/velX", botVelocityX);
+    Logger.recordOutput("minDistTrajectory/velY", botVelocityY);
+    Logger.recordOutput("minDistTrajectory/shooterVelocity", shooterVelocity);
+    Logger.recordOutput("minDistTrajectory/shooterAltitude", shooterAltitude);
+    Logger.recordOutput("minDistTrajectory/azimuth", azimuth);
+    Logger.recordOutput("minDistTrajectory/targetX", Meters.of(targetPos.getX()));
+    Logger.recordOutput("minDistTrajectory/targetY", Meters.of(targetPos.getY()));
+    Logger.recordOutput("minDistTrajectory/targetZ", Meters.of(targetPos.getZ()));
     LinearVelocity vX =
         botVelocityX.plus(
             shooterVelocity.times(

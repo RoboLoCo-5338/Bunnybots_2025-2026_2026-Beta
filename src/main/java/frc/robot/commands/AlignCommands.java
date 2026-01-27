@@ -109,7 +109,9 @@ public class AlignCommands {
                     Logger.recordOutput(
                         "AlignStationary/ShooterRadiansPerSecond",
                         shooterAngularVelocity.in(RadiansPerSecond));
-                    shooter.setShooterVelocity(shooterAngularVelocity);
+                    if (shooterAngularVelocity.in(RadiansPerSecond) > 0)
+                      shooter.setShooterVelocity(
+                          shooterAngularVelocity.times(0.1647809660 * 0.9890681004));
 
                     Angle azimuthDiff =
                         Radians.of(
@@ -256,7 +258,9 @@ public class AlignCommands {
                             solution.shooterVelocity.in(MetersPerSecond) * kShooter.getAsDouble());
                     Logger.recordOutput(
                         "AlignMoving/ShooterRadiansPerSecond", shooterAngularVelocity);
-                    shooter.setShooterVelocity(shooterAngularVelocity);
+                    if (shooterAngularVelocity.in(RadiansPerSecond) > 0)
+                      shooter.setShooterVelocity(
+                          shooterAngularVelocity.times(0.1647809660 * 0.9890681004));
 
                     AngularVelocity omega = solution.omega;
                     Angle azimuthDiff =
@@ -398,11 +402,11 @@ public class AlignCommands {
                 thetaCalc.clear();
                 omegaCalc.clear();
                 shooterVelCalc.clear();
-                for (int i = 0; i < numLagInputs + 1; i++) {
+                for (int i = 0; i < numLagInputs; i++) {
                   posXinputs.offerLast(drive.getPose().getMeasureX());
                   posYinputs.offerLast(drive.getPose().getMeasureY());
                 }
-                for (int i = 0; i < numLagInputs + 1; i++) {
+                for (int i = 0; i < numLagInputs; i++) {
                   thetaCalc.offerLast(solution.azimuth);
                 }
                 for (int i = 0; i < numLagInputs; i++) {
@@ -416,7 +420,7 @@ public class AlignCommands {
                   velYinputs.offerLast(MetersPerSecond.of(0));
                 }
 
-                for (int i = 0; i < numLagInputs - 1; i++) {
+                for (int i = 0; i < numLagInputs; i++) {
                   accelXinputs.offerLast(MetersPerSecondPerSecond.of(0));
                   accelYinputs.offerLast(MetersPerSecondPerSecond.of(0));
                 }
@@ -532,6 +536,9 @@ public class AlignCommands {
                     if (Constants.CURRENT_MODE == Constants.Mode.REAL) {
                       vX = vX.times(0.9194105329);
                       vY = vY.times(0.9194105329);
+                    } else if (Constants.CURRENT_MODE == Constants.Mode.SIM) {
+                      vX = vX.times(0.9963632740);
+                      vY = vY.times(0.9963632740);
                     }
                     Logger.recordOutput("testInputShape/Applied/aX", aX);
                     Logger.recordOutput("testInputShape/Applied/aY", aY);
@@ -571,7 +578,14 @@ public class AlignCommands {
                                 : drive.getRotation());
                     drive.runVelocity(speeds);
                     AngularVelocity shooterVel = v_sIt.next();
-                    shooter.setShooterVelocity(shooterVel.times(0.1647809660 * 0.9890681004));
+                    if (Constants.CURRENT_MODE == Constants.Mode.REAL) {
+                      if (shooterVel.in(RadiansPerSecond) > 0)
+                        shooter.setShooterVelocity(shooterVel.times(0.1647809660 * 0.9890681004));
+                    } else if (Constants.CURRENT_MODE == Constants.Mode.SIM) {
+                      if (shooterVel.in(RadiansPerSecond) > 0
+                          && shooterVel.in(RadiansPerSecond) < 500)
+                        shooter.setShooterVelocity(shooterVel.times(.1));
+                    }
                     Logger.recordOutput("testInputShape/Applied/shooterVel", shooterVel);
                     Logger.recordOutput("testInputShape/Applied/omega", omega);
                     Logger.recordOutput("testInputShape/Applied/theta", theta);
@@ -610,7 +624,11 @@ public class AlignCommands {
     Logger.recordOutput(
         "testInputShape/Real/omega",
         RadiansPerSecond.of(drive.getChassisSpeeds().omegaRadiansPerSecond));
-    Logger.recordOutput("testInputShape/Real/shooterVel", shooter.inputs1.shooterVelocityRadPerSec);
+    AngularVelocity shooterVel = shooter.inputs1.shooterVelocityRadPerSec;
+    if (Constants.CURRENT_MODE == Constants.Mode.SIM) {
+      shooterVel = shooterVel.times(260 / 16.0);
+    }
+    Logger.recordOutput("testInputShape/Real/shooterVel", shooterVel);
     Logger.recordOutput("testInputShape/Real/theta", drive.getPose().getRotation());
 
     /*
@@ -630,9 +648,7 @@ public class AlignCommands {
                     new Translation3d(drive.getPose().getX(), drive.getPose().getY(), 0))),
             shooterAltitude,
             Radians.of(drive.getPose().getRotation().getRadians()),
-            MetersPerSecond.of(
-                shooter.inputs1.shooterVelocityRadPerSec.in(RadiansPerSecond)
-                    / kShooter.getAsDouble()));
+            MetersPerSecond.of(shooterVel.in(RadiansPerSecond) / kShooter.getAsDouble()));
 
     Logger.recordOutput("testInputShape/Real/minDistTrajectory", error);
   }
