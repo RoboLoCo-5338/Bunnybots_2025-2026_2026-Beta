@@ -1,6 +1,6 @@
 package frc.robot.subsystems.groundintake;
 
-import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Volts;
@@ -32,9 +32,9 @@ public class GroundIntake extends SubsystemBase implements SysIdSubsystem {
 
   private final GroundIntakeRollerIO ioRoller;
   private final GroundIntakePivotIO ioPivot;
-  private final GroundIntakeRollerIOInputsAutoLogged inputsRoller =
+  public final GroundIntakeRollerIOInputsAutoLogged inputsRoller =
       new GroundIntakeRollerIOInputsAutoLogged();
-  private final GroundIntakePivotIOInputsAutoLogged inputsPivot =
+  public final GroundIntakePivotIOInputsAutoLogged inputsPivot =
       new GroundIntakePivotIOInputsAutoLogged();
 
   private final Alert groundIntakeRollerDisconnectedAlert =
@@ -86,7 +86,7 @@ public class GroundIntake extends SubsystemBase implements SysIdSubsystem {
   public Command setGroundIntakePivotPosition(Angle position) {
     return new StartEndCommand(
             () -> ioPivot.setGroundIntakePivotPosition(position),
-            () -> ioPivot.setGroundIntakePivotVelocity(DegreesPerSecond.of(0)),
+            () -> ioPivot.setGroundIntakePivotVelocity(RadiansPerSecond.of(0)),
             this)
         .until(
             () ->
@@ -97,6 +97,10 @@ public class GroundIntake extends SubsystemBase implements SysIdSubsystem {
 
   public Command setGroundIntakePivotVelocity(Supplier<AngularVelocity> velocity) {
     return new InstantCommand(() -> ioPivot.setGroundIntakePivotVelocity(velocity.get()), this);
+  }
+
+  public Command setGroundIntakePivotVoltage(Supplier<Voltage> voltage) {
+    return new InstantCommand(() -> ioPivot.setGroundIntakePivotOpenLoop(voltage.get()), this);
   }
 
   public List<SysIdTarget> getSysIdTargets() {
