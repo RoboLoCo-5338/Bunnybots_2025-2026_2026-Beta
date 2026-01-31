@@ -46,11 +46,11 @@ public class ShooterIOSim extends ShooterIOSpark implements SimMechanism {
     shooterPhysicsSim.update(0.02);
 
     motorSim.iterate(
-        shooterPhysicsSim.getAngularVelocityRadPerSec(), RobotController.getBatteryVoltage(), 0.02);
+        shooterPhysicsSim.getAngularVelocityRPM(), RobotController.getBatteryVoltage(), 0.02);
 
-    encoderSim.iterate(shooterPhysicsSim.getAngularVelocityRadPerSec(), 0.02);
+    encoderSim.iterate(shooterPhysicsSim.getAngularVelocityRPM(), 0.02);
 
-    encoderSim.setVelocity(shooterPhysicsSim.getAngularVelocityRadPerSec());
+    encoderSim.setVelocity(shooterPhysicsSim.getAngularVelocityRPM());
 
     Logger.recordOutput(
         "Shooter" + shooterNum + "/ShooterVelocity", shooterPhysicsSim.getAngularVelocity());

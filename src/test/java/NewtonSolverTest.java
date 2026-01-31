@@ -4,10 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Nat;
 import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.math.numbers.N1;
-import edu.wpi.first.math.numbers.N2;
 import edu.wpi.first.units.measure.*;
 import frc.robot.util.ProjectileTrajectoryUtils;
+import frc.robot.util.ProjectileTrajectoryUtils.AirResistanceSolver.TrajectorySolution;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,12 +34,12 @@ class NewtonSolverTest {
 
   @Test
   void testSolve() {
-    Matrix<N2, N1> result =
+    TrajectorySolution result =
         ProjectileTrajectoryUtils.AirResistanceSolver.newtonRhapsonSolveAirResistance(
             MetersPerSecond.of(1.0),
             MetersPerSecond.of(1.0),
             new Translation3d(2, 4, 1.81),
-            Degrees.of(60));
-    assertEquals(1,1, 0.1);
+            Degrees.of(50));
+    assertEquals(1, 1, 0.1);
   }
 }

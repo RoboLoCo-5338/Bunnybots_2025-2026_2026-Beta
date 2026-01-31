@@ -80,7 +80,7 @@ public class ProjectileTrajectoryUtils {
       double xVel = v_x + v_s * cos(theta) * cos(alpha);
       double yVel = v_y + v_s * sin(theta) * cos(alpha);
       double zVel = v_s * sin(alpha);
-      int simSteps = 500;
+      int simSteps = 870;
       for (int i = 0; i < simSteps; i++) {
         double t = ((i + 1.0) / simSteps) * 4.0; // Simulate up to 4 seconds
         xPos += xVel * (4.0 / simSteps);
@@ -94,7 +94,6 @@ public class ProjectileTrajectoryUtils {
         zVel -= (a_d * (zVel / vMag)) * (4.0 / simSteps);
         zVel -= g * (4.0 / simSteps); // Gravity effect
 
-        double dist = sqrt(pow(xPos, 2) + pow(yPos, 2) + pow(z - zPos, 2));
         if (zVel < 0.0 && zPos < z) {
           return new Matrix<>(Nat.N2(), Nat.N1(), new double[] {xPos, yPos});
         }
@@ -109,7 +108,22 @@ public class ProjectileTrajectoryUtils {
     private static final int MAX_ITERS = 10;
     private static final double tolerance = 0.02;
 
-    public static Matrix<N2, N1> newtonRhapsonSolveAirResistance(
+    public static class TrajectorySolution {
+      public LinearVelocity shooterVelocity;
+      public Angle azimuth;
+
+      public TrajectorySolution(LinearVelocity shooterVelocity, Angle azimuth) {
+        this.shooterVelocity = shooterVelocity;
+        this.azimuth = azimuth;
+      }
+
+      public TrajectorySolution(Matrix<N2, N1> vector) {
+        this.shooterVelocity = MetersPerSecond.of(vector.get(0, 0));
+        this.azimuth = Radians.of(vector.get(1, 0));
+      }
+    }
+
+    public static TrajectorySolution newtonRhapsonSolveAirResistance(
         LinearVelocity botVelocityX,
         LinearVelocity botVelocityY,
         Translation3d targetPos,
@@ -126,36 +140,39 @@ public class ProjectileTrajectoryUtils {
                 noAirResSolution.azimuth.in(Radians)
               });
       Matrix<N2, N1> x = guess;
-
-      for (int count = 0; count < MAX_ITERS; count++) {
-        Matrix<N2, N1> f_x =
-            f_airResistance(
-                    x,
-                    botVelocityX.in(MetersPerSecond),
-                    botVelocityY.in(MetersPerSecond),
-                    targetPos.getZ(),
-                    shooterAltitude.in(Radians))
-                .minus(
-                    new Matrix<>(
-                        Nat.N2(), Nat.N1(), new double[] {targetPos.getX(), targetPos.getY()}));
-        if (count % 1 == 0) {
-          System.out.println("\niteration: " + (count + 1) + "  f_x:" + dist(f_x) + "\n");
-          System.out.println(x);
-          System.out.println("\n");
-          System.out.println(f_x);
-          System.out.println("\n");
+      try {
+        for (int count = 0; count < MAX_ITERS; count++) {
+          Matrix<N2, N1> f_x =
+              f_airResistance(
+                      x,
+                      botVelocityX.in(MetersPerSecond),
+                      botVelocityY.in(MetersPerSecond),
+                      targetPos.getZ(),
+                      shooterAltitude.in(Radians))
+                  .minus(
+                      new Matrix<>(
+                          Nat.N2(), Nat.N1(), new double[] {targetPos.getX(), targetPos.getY()}));
+          if (count % 1 == 0) {
+            // System.out.println("\niteration: " + (count + 1) + "  f_x:" + dist(f_x) + "\n");
+            // System.out.println(x);
+            // System.out.println("\n");
+            // System.out.println(f_x);
+            // System.out.println("\n");
+          }
+          if (dist(f_x) < tolerance) return new TrajectorySolution(x);
+          Matrix<N2, N2> J =
+              calcJacobian(
+                  x,
+                  botVelocityX.in(MetersPerSecond),
+                  botVelocityY.in(MetersPerSecond),
+                  targetPos.getZ(),
+                  shooterAltitude.in(Radians));
+          x = x.minus(J.inv().times(f_x));
         }
-        if (dist(f_x) < tolerance) return x;
-        Matrix<N2, N2> J =
-            calcJacobian(
-                x,
-                botVelocityX.in(MetersPerSecond),
-                botVelocityY.in(MetersPerSecond),
-                targetPos.getZ(),
-                shooterAltitude.in(Radians));
-        x = x.minus(J.inv().times(f_x));
+        return new TrajectorySolution(guess);
+      } catch (Exception e) {
+        return new TrajectorySolution(guess);
       }
-      return guess;
     }
   }
 

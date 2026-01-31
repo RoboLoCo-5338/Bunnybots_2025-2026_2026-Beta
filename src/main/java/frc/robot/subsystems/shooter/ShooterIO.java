@@ -44,5 +44,8 @@ public class ShooterIO {
 
   public void setShooterVelocity(AngularVelocity velocity) {}
 
+  public void setShooterVelocityAndAcceleration(
+      AngularVelocity velocity, AngularVelocity lastVelocity) {}
+
   public void shooterOpenLoop(Voltage voltage) {}
 }

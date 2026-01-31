@@ -3,8 +3,9 @@ package frc.robot.subsystems.shooter;
 import static edu.wpi.first.units.Units.Amps;
 import static edu.wpi.first.units.Units.Celsius;
 import static edu.wpi.first.units.Units.Millimeters;
-import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.RPM;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.Rotations;
 import static edu.wpi.first.units.Units.Volts;
 
 import au.grapplerobotics.LaserCan;
@@ -40,7 +41,9 @@ public class ShooterIOSpark extends ShooterIO {
 
   SimpleMotorFeedforward feedforward =
       new SimpleMotorFeedforward(
-          ShooterConstants.SHOOTER_MOTOR_KS, ShooterConstants.SHOOTER_MOTOR_KV);
+          ShooterConstants.SHOOTER_MOTOR_KS,
+          ShooterConstants.SHOOTER_MOTOR_KV,
+          ShooterConstants.SHOOTER_MOTOR_KA);
   LaserCan laserCan = new LaserCan(ShooterConstants.LASERCAN_ID);
   private final LoggedTunableNumber kP =
       new LoggedTunableNumber("Shooter/kP", ShooterConstants.SHOOTER_MOTOR_VELOCITY_KP);
@@ -129,15 +132,11 @@ public class ShooterIOSpark extends ShooterIO {
     sparkUtil.ifOk(
         shooterMotor,
         shooterEncoder::getPosition,
-        (value) ->
-            inputs.shooterPositionRads =
-                Radians.of(value * 2.0 * Math.PI * ShooterConstants.GEARING));
+        (value) -> inputs.shooterPositionRads = Rotations.of(value * ShooterConstants.GEARING));
     sparkUtil.ifOk(
         shooterMotor,
         shooterEncoder::getVelocity,
-        (value) ->
-            inputs.shooterVelocityRadPerSec =
-                RadiansPerSecond.of(value * 2.0 * Math.PI / 60.0 * ShooterConstants.GEARING));
+        (value) -> inputs.shooterVelocityRadPerSec = RPM.of(value * ShooterConstants.GEARING));
     sparkUtil.ifOk(
         shooterMotor,
         new DoubleSupplier[] {shooterMotor::getAppliedOutput, shooterMotor::getBusVoltage},
@@ -180,10 +179,22 @@ public class ShooterIOSpark extends ShooterIO {
 
   @Override
   public void setShooterVelocity(AngularVelocity velocity) {
-    double velRadPerSec = velocity.in(RadiansPerSecond);
-    double velRPM = velRadPerSec * 60.0 / (2.0 * Math.PI) / ShooterConstants.GEARING;
-    shooterClosedLoopController.setReference(
-        velRPM, ControlType.kVelocity, ClosedLoopSlot.kSlot0, feedforward.calculate(velRadPerSec));
+    shooterClosedLoopController.setSetpoint(
+        velocity.in(RPM),
+        ControlType.kVelocity,
+        ClosedLoopSlot.kSlot0,
+        feedforward.calculate(velocity.in(RadiansPerSecond)));
+  }
+
+  @Override
+  public void setShooterVelocityAndAcceleration(
+      AngularVelocity velocity, AngularVelocity lastVelocity) {
+    shooterClosedLoopController.setSetpoint(
+        velocity.in(RPM),
+        ControlType.kVelocity,
+        ClosedLoopSlot.kSlot0,
+        feedforward.calculateWithVelocities(
+            lastVelocity.in(RadiansPerSecond), velocity.in(RadiansPerSecond)));
   }
 
   public void follow(ShooterIOSpark leader, boolean inverted) {
