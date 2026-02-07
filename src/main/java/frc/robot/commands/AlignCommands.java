@@ -6,7 +6,6 @@ import edu.wpi.first.hal.HALUtil;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Nat;
 import edu.wpi.first.math.Pair;
-import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -31,9 +30,6 @@ import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.util.ProjectileTrajectoryUtils;
 import frc.robot.util.ProjectileTrajectoryUtils.AirResistanceSolver.TrajectorySolution;
 import frc.robot.util.ProjectileTrajectoryUtils.FixedTrajectorySolution;
-import frc.robot.util.ProjectileTrajectoryUtils.MovingTrajectorySolution;
-import java.util.Deque;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
@@ -173,8 +169,6 @@ public class AlignCommands {
     double deltaTheta = ((theta0 - theta_1 + Math.PI) % (2 * Math.PI) - Math.PI);
     Logger.recordOutput("computeOmega/deltaTheta", deltaTheta);
 
-    AngularVelocity pidOmega =
-        RadiansPerSecond.of(azimuthMovingPid.calculate(drive.getRotation().getRadians(), theta0));
     double pidOmegaTrap =
         azimuthMovingPidTrap.calculate(
             drive.getRotation().getRadians(), new TrapezoidProfile.State(theta0, omega1));
@@ -220,18 +214,19 @@ public class AlignCommands {
               () -> {
                 lastSolution = null;
 
-                azimuthMovingPid =
-                    new PIDController(
-                        kPtheta.getAsDouble(), kItheta.getAsDouble(), kDtheta.getAsDouble());
                 azimuthMovingPidTrap =
                     new ProfiledPIDController(
                         kPtheta.getAsDouble(),
                         kItheta.getAsDouble(),
                         kDtheta.getAsDouble(),
-                        new TrapezoidProfile.Constraints(5, 10));
+                        new TrapezoidProfile.Constraints(3, 6));
+                azimuthMovingPidTrap.enableContinuousInput(-Math.PI, Math.PI);
+                azimuthMovingPidTrap.setTolerance(0.001);
+                azimuthMovingPidTrap.reset(
+                    new TrapezoidProfile.State(
+                        drive.getRotation().getRadians(),
+                        drive.getChassisSpeeds().omegaRadiansPerSecond));
 
-                azimuthMovingPid.enableContinuousInput(-Math.PI, Math.PI);
-                azimuthMovingPid.setTolerance(0.001);
                 appliedVelX.clear();
                 appliedVelY.clear();
                 appliedOmega.clear();
@@ -331,18 +326,21 @@ public class AlignCommands {
                     }
                     omega = computeOmega(drive, shooter, kShooter);
                     Logger.recordOutput("moveShootCommand/Applied/omega", omega);
-                    
-                    if(Constants.CURRENT_MODE == Constants.Mode.REAL){
-                    drive.runVelocityDangerous(
-                        ChassisSpeeds.fromFieldRelativeSpeeds(
-                            velX.times(0.9158924782), velY.times(0.9158924782), RadiansPerSecond.of(omega), drive.getRotation()));
-                    }else{
-                    drive.runVelocityDangerous(
-                        ChassisSpeeds.fromFieldRelativeSpeeds(
-                            velX, velY, RadiansPerSecond.of(omega), drive.getRotation()));
+
+                    if (Constants.CURRENT_MODE == Constants.Mode.REAL) {
+                      drive.runVelocityDangerous(
+                          ChassisSpeeds.fromFieldRelativeSpeeds(
+                              velX.times(0.9158924782),
+                              velY.times(0.9158924782),
+                              RadiansPerSecond.of(omega),
+                              drive.getRotation()));
+                    } else {
+                      drive.runVelocityDangerous(
+                          ChassisSpeeds.fromFieldRelativeSpeeds(
+                              velX, velY, RadiansPerSecond.of(omega), drive.getRotation()));
                     }
-                    
-                            appliedVelX.addFirst(velX.in(MetersPerSecond));
+
+                    appliedVelX.addFirst(velX.in(MetersPerSecond));
                     appliedVelY.addFirst(velY.in(MetersPerSecond));
                     appliedOmega.addFirst(omega);
                     Logger.recordOutput("moveShootCommand/Applied/velX", velX.in(MetersPerSecond));
@@ -402,23 +400,6 @@ public class AlignCommands {
 
   static AngularVelocity lastShooterVel = RadiansPerSecond.of(0);
 
-  static PIDController azimuthMovingPid = new PIDController(5, 0, 1);
-  static Deque<Distance> posXinputs = new LinkedList<>();
-  static Deque<Distance> posYinputs = new LinkedList<>();
-  static Iterator<Distance> posXit;
-  static Iterator<Distance> posYit;
-  static Iterator<LinearVelocity> velXit;
-  static Iterator<LinearVelocity> velYit;
-  static Deque<LinearAcceleration> accelXinputs = new LinkedList<>();
-  static Deque<LinearAcceleration> accelYinputs = new LinkedList<>();
-  static Iterator<LinearAcceleration> accelXit;
-  static Iterator<LinearAcceleration> accelYit;
-  static Deque<Angle> thetaCalc = new LinkedList<>();
-  static Deque<AngularVelocity> omegaCalc = new LinkedList<>();
-  static Deque<AngularVelocity> shooterVelCalc = new LinkedList<>();
-  static Iterator<Angle> thetaIt;
-  static Iterator<AngularVelocity> omegaIt;
-  static Iterator<AngularVelocity> v_sIt;
   private static int numLagInputs = 10;
   private static int numAdvanceVel =
       Constants.CURRENT_MODE == Constants.Mode.SIM ? 6 : 4; // compensating for pid lag
@@ -427,247 +408,6 @@ public class AlignCommands {
   private static int numAdvanceOmega =
       Constants.CURRENT_MODE == Constants.Mode.SIM ? 6 : 8; // compensating for pid lag
   private static int numAdvanceShooter = 4;
-
-  public static Command testInputShape(
-      Drive drive,
-      Shooter shooter,
-      DoubleSupplier kShooter,
-      LinearVelocity maxSpeed,
-      DoubleSupplier inputX,
-      DoubleSupplier inputY,
-      DoubleSupplier kPtheta,
-      DoubleSupplier kItheta,
-      DoubleSupplier kDtheta) {
-    try {
-      return Commands.runOnce(
-              () -> {
-                azimuthMovingPid =
-                    new PIDController(
-                        kPtheta.getAsDouble(), kItheta.getAsDouble(), kDtheta.getAsDouble());
-                azimuthMovingPid.enableContinuousInput(-Math.PI, Math.PI);
-                azimuthMovingPid.setTolerance(0.01);
-                FixedTrajectorySolution solution =
-                    ProjectileTrajectoryUtils.calcFiringSolution(
-                        MetersPerSecond.of(0),
-                        MetersPerSecond.of(0),
-                        hubLocation.minus(
-                            shooterOffset.plus(
-                                new Translation3d(
-                                    drive.getPose().getX(), drive.getPose().getY(), 0))),
-                        shooterAltitude);
-                posXinputs.clear();
-                posYinputs.clear();
-                velXinputs.clear();
-                velYinputs.clear();
-                accelXinputs.clear();
-                accelYinputs.clear();
-                thetaCalc.clear();
-                omegaCalc.clear();
-                shooterVelCalc.clear();
-                for (int i = 0; i < numLagInputs; i++) {
-                  posXinputs.offerLast(drive.getPose().getMeasureX());
-                  posYinputs.offerLast(drive.getPose().getMeasureY());
-                }
-                for (int i = 0; i < numLagInputs; i++) {
-                  thetaCalc.offerLast(solution.azimuth);
-                }
-                for (int i = 0; i < numLagInputs; i++) {
-                  shooterVelCalc.offerLast(
-                      RadiansPerSecond.of(
-                          solution.shooterVelocity.in(MetersPerSecond) * kShooter.getAsDouble()));
-                }
-
-                for (int i = 0; i < numLagInputs; i++) {
-                  velXinputs.offerLast(MetersPerSecond.of(0));
-                  velYinputs.offerLast(MetersPerSecond.of(0));
-                }
-
-                for (int i = 0; i < numLagInputs; i++) {
-                  accelXinputs.offerLast(MetersPerSecondPerSecond.of(0));
-                  accelYinputs.offerLast(MetersPerSecondPerSecond.of(0));
-                }
-                for (int i = 0; i < numLagInputs; i++) {
-                  omegaCalc.offerLast(RadiansPerSecond.of(0));
-                }
-              })
-          .andThen(
-              Commands.runEnd(
-                  () -> {
-
-                    // calculation values:
-                    // time-synchronized
-                    Distance calcX, calcY;
-                    LinearVelocity calcVx, calcVy;
-                    LinearAcceleration calcAx, calcAy;
-
-                    // process inputs
-                    Pair<LinearVelocity, LinearVelocity> vIn =
-                        clampInputs(inputX, inputY, maxSpeed);
-                    Pair<LinearVelocity, LinearVelocity> vLimited =
-                        limitVelocityByAccel(vIn, velXinputs.peekLast(), velYinputs.peekLast());
-                    accelXinputs.offer(
-                        (vLimited.getFirst().minus(velXinputs.peekLast())).div(deltaT));
-                    accelYinputs.offer(
-                        (vLimited.getSecond().minus(velYinputs.peekLast())).div(deltaT));
-                    calcAx = accelXinputs.peekLast();
-                    calcAy = accelYinputs.peekLast();
-                    calcVx = velXinputs.peekLast();
-                    calcVy = velYinputs.peekLast();
-                    calcX = posXinputs.peekLast();
-                    calcY = posYinputs.peekLast();
-                    velXinputs.offerLast(vLimited.getFirst());
-                    velYinputs.offerLast(vLimited.getSecond());
-                    posXinputs.offerLast(
-                        posXinputs
-                            .peekLast()
-                            .plus(calcVx.times(deltaT))
-                            .plus(calcAx.times(deltaT).times(deltaT).times(0.5)));
-                    posYinputs.offerLast(
-                        posYinputs
-                            .peekLast()
-                            .plus(calcVy.times(deltaT))
-                            .plus(calcAy.times(deltaT).times(deltaT).times(0.5)));
-                    Logger.recordOutput("testInputShape/vInX", vIn.getFirst());
-                    Logger.recordOutput("testInputShape/vInY", vIn.getSecond());
-                    Logger.recordOutput("testInputShape/vLimitedX", vLimited.getFirst());
-                    Logger.recordOutput("testInputShape/vLimitedY", vLimited.getSecond());
-
-                    MovingTrajectorySolution solution =
-                        ProjectileTrajectoryUtils.calcMovingFiringSolution(
-                            calcVx,
-                            calcVy,
-                            calcAx,
-                            calcAy,
-                            hubLocation.minus(
-                                shooterOffset.plus(
-                                    new Translation3d(calcX.in(Meters), calcY.in(Meters), 0))),
-                            shooterAltitude);
-
-                    AngularVelocity shooterAngularVelocity =
-                        RadiansPerSecond.of(
-                            solution.shooterVelocity.in(MetersPerSecond) * kShooter.getAsDouble());
-                    shooterVelCalc.offerLast(
-                        RadiansPerSecond.of(vLimited.getFirst().in(MetersPerSecond) * 100));
-                    thetaCalc.offerLast(solution.azimuth);
-                    omegaCalc.offerLast(solution.omega);
-                    Logger.recordOutput("testInputShape/Calculated/theta", solution.azimuth);
-                    Logger.recordOutput("testInputShape/Calculated/omega", solution.omega);
-                    Logger.recordOutput(
-                        "testInputShape/Calculated/shooterVel", shooterAngularVelocity);
-
-                    Logger.recordOutput("testInputShape/Calculated/accelX", calcAx);
-                    Logger.recordOutput("testInputShape/Calculated/accelY", calcAy);
-                    Logger.recordOutput("testInputShape/Calculated/velX", calcVx);
-                    Logger.recordOutput("testInputShape/Calculated/velY", calcVy);
-                    Logger.recordOutput("testInputShape/Calculated/posX", calcX);
-                    Logger.recordOutput("testInputShape/Calculated/posY", calcY);
-
-                    /*
-                     *
-                     *
-                     * apply lagged inputs
-                     *
-                     *
-                     */
-                    posXit = posXinputs.iterator();
-                    posYit = posYinputs.iterator();
-                    thetaIt = thetaCalc.iterator();
-                    v_sIt = shooterVelCalc.iterator();
-                    for (int i = 0; i < numAdvanceShooter; i++) v_sIt.next();
-
-                    velXit = velXinputs.iterator();
-                    velYit = velYinputs.iterator();
-                    for (int i = 0; i < numAdvanceVel; i++) {
-                      velXit.next();
-                      velYit.next();
-                    }
-                    accelXit = accelXinputs.iterator();
-                    accelYit = accelYinputs.iterator();
-                    omegaIt = omegaCalc.iterator();
-                    for (int i = 0; i < numAdvanceOmega; i++) omegaIt.next();
-
-                    Distance x = posXit.next();
-                    Distance y = posYit.next();
-                    LinearVelocity vX = velXit.next();
-                    LinearVelocity vY = velYit.next();
-                    LinearAcceleration aX = accelXit.next();
-                    LinearAcceleration aY = accelYit.next();
-                    Logger.recordOutput("testInputShape/Applied/posX", x);
-                    Logger.recordOutput("testInputShape/Applied/posY", y);
-                    Logger.recordOutput("testInputShape/Applied/vX", vX);
-                    Logger.recordOutput("testInputShape/Applied/vY", vY);
-                    if (Constants.CURRENT_MODE == Constants.Mode.REAL) {
-                      vX = vX.times(0.9194105329);
-                      vY = vY.times(0.9194105329);
-                    } else if (Constants.CURRENT_MODE == Constants.Mode.SIM) {
-                      vX = vX.times(0.9963632740);
-                      vY = vY.times(0.9963632740);
-                    }
-                    Logger.recordOutput("testInputShape/Applied/aX", aX);
-                    Logger.recordOutput("testInputShape/Applied/aY", aY);
-                    // Distance xErr = x.minus(drive.getPose().getMeasureX());
-                    // Distance yErr = y.minus(drive.getPose().getMeasureY());
-                    // vX = vX.plus(xErr.div(Milliseconds.of(500)).times(0.1));
-                    // vY = vY.plus(yErr.div(Milliseconds.of(500)).times(0.1));
-                    Angle theta = thetaIt.next();
-                    AngularVelocity omega = omegaIt.next();
-                    Angle azimuthDiff =
-                        Radians.of(
-                            deadzone(
-                                (theta.in(Radians) - drive.getPose().getRotation().getRadians()),
-                                0.001));
-                    if (azimuthDiff.in(Degrees) > 180) {
-                      azimuthDiff = Degrees.of(azimuthDiff.in(Degrees) - 360);
-                    } else if (azimuthDiff.in(Degrees) < -180) {
-                      azimuthDiff = Degrees.of(azimuthDiff.in(Degrees) + 360);
-                    }
-                    // omega = omega.plus(azimuthDiff.div(Seconds.of(0.1)));
-                    AngularVelocity pidOmega =
-                        RadiansPerSecond.of(
-                            azimuthMovingPid.calculate(
-                                drive.getRotation().getRadians(), theta.in(Radians)));
-                    if (azimuthMovingPid.atSetpoint()) {
-                      pidOmega = RadiansPerSecond.of(0);
-                    }
-                    // omega = RadiansPerSecond.of(0);
-                    // pidOmega = RadiansPerSecond.of(0);
-
-                    ChassisSpeeds speeds = new ChassisSpeeds(vX, vY, omega.plus(pidOmega));
-                    speeds =
-                        ChassisSpeeds.fromFieldRelativeSpeeds(
-                            speeds,
-                            isFlipped
-                                ? drive.getRotation().plus(new Rotation2d(Math.PI))
-                                : drive.getRotation());
-                    drive.runVelocity(speeds);
-                    AngularVelocity shooterVel = v_sIt.next();
-                    if (Constants.CURRENT_MODE == Constants.Mode.REAL) {
-                      if (shooterVel.in(RadiansPerSecond) > 0)
-                        shooter.setShooterVelocity(shooterVel.times(0.1647809660 * 0.9890681004));
-                    } else if (Constants.CURRENT_MODE == Constants.Mode.SIM) {
-                      if (shooterVel.in(RadiansPerSecond) > 0
-                          && shooterVel.in(RadiansPerSecond) < 500)
-                        shooter.setShooterVelocity(shooterVel.times(.1));
-                    }
-                    Logger.recordOutput("testInputShape/Applied/shooterVel", shooterVel);
-                    Logger.recordOutput("testInputShape/Applied/omega", omega);
-                    Logger.recordOutput("testInputShape/Applied/theta", theta);
-
-                    logRealPlusError(drive, shooter, kShooter);
-
-                    pollIdealDelayed();
-                  },
-                  () -> {
-                    drive.stop();
-                    shooter.setShooterVelocity(RadiansPerSecond.of(0));
-                  }));
-
-    } catch (Exception e) {
-      DriverStation.reportError("testInputShape", e.getStackTrace());
-      return Commands
-          .none(); // catches exception in command creation during boot, prevents BOOT LOOP
-    }
-  }
 
   public static void logRealPlusError(Drive drive, Shooter shooter, DoubleSupplier kShooter) {
 
@@ -714,7 +454,7 @@ public class AlignCommands {
             MetersPerSecond.of(shooterVel.in(RadiansPerSecond) / kShooter.getAsDouble()));
 
     Matrix<N2, N1> displacement =
-        ProjectileTrajectoryUtils.AirResistanceSolver.f_airResistance(
+        ProjectileTrajectoryUtils.AirResistanceSolver.f_airResistance_RK4(
             new Matrix<>(
                 Nat.N2(),
                 Nat.N1(),
@@ -751,18 +491,6 @@ public class AlignCommands {
   }
 
   static FixedTrajectorySolution idealLast = null;
-
-  public static void pollIdealDelayed() {
-    Logger.recordOutput("testInputShape/Ideal/posX", posXinputs.pollFirst());
-    Logger.recordOutput("testInputShape/Ideal/posY", posYinputs.pollFirst());
-    Logger.recordOutput("testInputShape/Ideal/vX", velXinputs.pollFirst());
-    Logger.recordOutput("testInputShape/Ideal/vY", velYinputs.pollFirst());
-    Logger.recordOutput("testInputShape/Ideal/aX", accelXinputs.pollFirst());
-    Logger.recordOutput("testInputShape/Ideal/aY", accelYinputs.pollFirst());
-    Logger.recordOutput("testInputShape/Ideal/theta", thetaCalc.pollFirst());
-    Logger.recordOutput("testInputShape/Ideal/omega", omegaCalc.pollFirst());
-    Logger.recordOutput("testInputShape/Ideal/shooterVel", shooterVelCalc.pollFirst());
-  }
 
   //   Torque maxTorque = NewtonMeters.of(10);
   //   Force maxForce = Newtons.of(10);

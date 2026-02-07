@@ -194,7 +194,7 @@ public class ProjectileTrajectoryUtils {
       return next_s;
     }
 
-    public static final int maxItersBisection = 5;
+    public static final int maxItersBisection = 15;
     public static final double toleranceBisect = 1e-3;
 
     public static Matrix<N2, N1> bisectionMethodRK4(State low, State high, double dt, double z) {
@@ -206,9 +206,9 @@ public class ProjectileTrajectoryUtils {
         } else {
           high = mid;
         }
-        if (low.z - high.z < toleranceBisect) {
-          break;
-        }
+        // if (low.z - high.z < toleranceBisect) {
+        //   break;
+        // }
       }
       return new Matrix<>(Nat.N2(), Nat.N1(), new double[] {low.x, low.y});
     }
@@ -246,7 +246,7 @@ public class ProjectileTrajectoryUtils {
       return sqrt(pow(v.get(0, 0), 2) + pow(v.get(1, 0), 2));
     }
 
-    private static final int MAX_ITERS = 3;
+    private static final int MAX_ITERS = 17;
     private static final double tolerance = 0.001;
 
     public static class TrajectorySolution {
@@ -270,9 +270,9 @@ public class ProjectileTrajectoryUtils {
         Translation3d targetPos,
         Angle shooterAltitude,
         FixedTrajectorySolution guessSolution) {
-      // if (guessSolution == null) {
-      guessSolution = calcFiringSolution(botVelocityX, botVelocityY, targetPos, shooterAltitude);
-      // }
+      if (guessSolution == null) {
+        guessSolution = calcFiringSolution(botVelocityX, botVelocityY, targetPos, shooterAltitude);
+      }
       Matrix<N2, N1> guess =
           new Matrix<>(
               Nat.N2(),
@@ -300,7 +300,7 @@ public class ProjectileTrajectoryUtils {
             // System.out.println(f_x);
             // System.out.println("\n");
           }
-          if (dist(f_x) < tolerance) return new TrajectorySolution(x);
+          // if (dist(f_x) < tolerance) return new TrajectorySolution(x);
           Matrix<N2, N2> J =
               calcJacobian(
                   x,

@@ -309,17 +309,17 @@ public class RobotContainer {
     // Create entries for Kp and Ki, with default values
     kPEntry =
         tuningTab
-            .add("Kp", 5.0) // Key "Kp", default 0.01
+            .add("Kp", 6.7) // Key "Kp", default 0.01
             .withWidget("NumberSlider") // Use a slider widget
             .getEntry();
     kIEntry =
         tuningTab
-            .add("Ki", 0.0) // Key "Ki", default 0.001
+            .add("Ki", 0.1) // Key "Ki", default 0.001
             .withWidget("NumberSlider")
             .getEntry();
     kDEntry =
         tuningTab
-            .add("Kd", 0.1) // Key "Kd", default 0.001
+            .add("Kd", 0.8) // Key "Kd", default 0.001
             .withWidget("NumberSlider")
             .getEntry();
     kShooterEntry = tuningTab.add("Kshooter", 1).withWidget("NumberSlider").getEntry();

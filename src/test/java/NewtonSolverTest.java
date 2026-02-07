@@ -39,7 +39,8 @@ class NewtonSolverTest {
             MetersPerSecond.of(1.0),
             MetersPerSecond.of(1.0),
             new Translation3d(2, 4, 1.81),
-            Degrees.of(50));
-    assertEquals(1, 1, 0.1);
+            Degrees.of(50),
+            null);
+    assertEquals(1, 1, 0.01);
   }
 }
