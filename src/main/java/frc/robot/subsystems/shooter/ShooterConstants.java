@@ -14,12 +14,12 @@ public final class ShooterConstants {
   public static final int SHOOTER_MOTOR_1_ID = 41; // Test Values
   public static final int SHOOTER_MOTOR_2_ID = 44;
   public static final double SHOOTER_MOTOR_VELOCITY_KP =
-      Constants.CURRENT_MODE == Constants.SIM_MODE ? 0.0034718 * 2 * Math.PI / 60 : 0;
+      Constants.CURRENT_MODE == Constants.SIM_MODE ? 0.0033136 * 2 * Math.PI / 60 : 0;
   public static final double SHOOTER_MOTOR_VELOCITY_KI = 0;
   public static final double SHOOTER_MOTOR_VELOCITY_KD = 0;
-  public static final double SHOOTER_MOTOR_KV = 0.016613;
-  public static final double SHOOTER_MOTOR_KS = 0.012475;
-  public static final double SHOOTER_MOTOR_KA = 0.0062194;
+  public static final double SHOOTER_MOTOR_KV = 0.017225;
+  public static final double SHOOTER_MOTOR_KS = 0.0;
+  public static final double SHOOTER_MOTOR_KA = 0.0025188;
 
   public static final Current SHOOTER_MOTOR_CURRENT_LIMIT = Amps.of(60);
   public static final double GEARING = 1.0;

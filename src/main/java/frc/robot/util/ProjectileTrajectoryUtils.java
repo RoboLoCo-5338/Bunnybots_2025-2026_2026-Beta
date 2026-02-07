@@ -80,7 +80,7 @@ public class ProjectileTrajectoryUtils {
       double xVel = v_x + v_s * cos(theta) * cos(alpha);
       double yVel = v_y + v_s * sin(theta) * cos(alpha);
       double zVel = v_s * sin(alpha);
-      int simSteps = 870;
+      int simSteps = 970;
       for (int i = 0; i < simSteps; i++) {
         double t = ((i + 1.0) / simSteps) * 4.0; // Simulate up to 4 seconds
         xPos += xVel * (4.0 / simSteps);
@@ -101,12 +101,153 @@ public class ProjectileTrajectoryUtils {
       return new Matrix<>(Nat.N2(), Nat.N1(), new double[] {0.0, 0.0});
     }
 
+    public static class State {
+      double x, y, z;
+      double vx, vy, vz;
+
+      public State() {
+        this.x = 0;
+        this.y = 0;
+        this.z = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.vz = 0;
+      }
+
+      public State(double x, double y, double z, double vx, double vy, double vz) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.vx = vx;
+        this.vy = vy;
+        this.vz = vz;
+      }
+    }
+
+    /** Derivative function: returns dS/dt */
+    public static State get_derivative(State s) {
+      double speed = Math.sqrt(s.vx * s.vx + s.vy * s.vy + s.vz * s.vz);
+
+      State deriv = new State();
+      deriv.x = s.vx;
+      deriv.y = s.vy;
+      deriv.z = s.vz;
+
+      // Acceleration: Gravity + Drag (opposite to velocity direction)
+      dragAccel(speed);
+      deriv.vx = -(dragAccel(speed) * (s.vx / speed));
+      deriv.vy = -(dragAccel(speed) * (s.vy / speed));
+      deriv.vz = -g - (dragAccel(speed) * (s.vz / speed));
+
+      return deriv;
+    }
+
+    // RK4 Step function
+    public static State rk4_step(State s, double dt) {
+      State k1, k2, k3, k4, next_s;
+
+      // k1 = f(t, s)
+      k1 = get_derivative(s);
+
+      // k2 = f(t + dt/2, s + k1 * dt/2)
+      State s2 =
+          new State(
+              s.x + k1.x * dt / 2,
+              s.y + k1.y * dt / 2,
+              s.z + k1.z * dt / 2,
+              s.vx + k1.vx * dt / 2,
+              s.vy + k1.vy * dt / 2,
+              s.vz + k1.vz * dt / 2);
+      k2 = get_derivative(s2);
+
+      // k3 = f(t + dt/2, s + k2 * dt/2)
+      State s3 =
+          new State(
+              s.x + k2.x * dt / 2,
+              s.y + k2.y * dt / 2,
+              s.z + k2.z * dt / 2,
+              s.vx + k2.vx * dt / 2,
+              s.vy + k2.vy * dt / 2,
+              s.vz + k2.vz * dt / 2);
+      k3 = get_derivative(s3);
+
+      // k4 = f(t + dt, s + k3 * dt)
+      State s4 =
+          new State(
+              s.x + k3.x * dt,
+              s.y + k3.y * dt,
+              s.z + k3.z * dt,
+              s.vx + k3.vx * dt,
+              s.vy + k3.vy * dt,
+              s.vz + k3.vz * dt);
+      k4 = get_derivative(s4);
+
+      next_s = new State();
+      // Combine steps: s_next = s + (dt/6) * (k1 + 2k2 + 2k3 + k4)
+      next_s.x = s.x + (dt / 6.0) * (k1.x + 2 * k2.x + 2 * k3.x + k4.x);
+      next_s.y = s.y + (dt / 6.0) * (k1.y + 2 * k2.y + 2 * k3.y + k4.y);
+      next_s.z = s.z + (dt / 6.0) * (k1.z + 2 * k2.z + 2 * k3.z + k4.z);
+      next_s.vx = s.vx + (dt / 6.0) * (k1.vx + 2 * k2.vx + 2 * k3.vx + k4.vx);
+      next_s.vy = s.vy + (dt / 6.0) * (k1.vy + 2 * k2.vy + 2 * k3.vy + k4.vy);
+      next_s.vz = s.vz + (dt / 6.0) * (k1.vz + 2 * k2.vz + 2 * k3.vz + k4.vz);
+
+      return next_s;
+    }
+
+    public static final int maxItersBisection = 5;
+    public static final double toleranceBisect = 1e-3;
+
+    public static Matrix<N2, N1> bisectionMethodRK4(State low, State high, double dt, double z) {
+      for (int i = 0; i < maxItersBisection; i++) {
+        dt /= 2.0;
+        State mid = rk4_step(low, dt);
+        if (mid.z > z) {
+          low = mid;
+        } else {
+          high = mid;
+        }
+        if (low.z - high.z < toleranceBisect) {
+          break;
+        }
+      }
+      return new Matrix<>(Nat.N2(), Nat.N1(), new double[] {low.x, low.y});
+    }
+
+    public static final int simStepsRK4 = 50;
+
+    public static Matrix<N2, N1> f_airResistance_RK4(
+        Matrix<N2, N1> in, double v_x, double v_y, double z, double alpha) {
+      double v_s = in.get(0, 0);
+      double theta = in.get(1, 0);
+      State state = new State();
+      state.x = 0;
+      state.y = 0;
+      state.z = 0;
+      state.vx = v_x + v_s * cos(theta) * cos(alpha);
+      state.vy = v_y + v_s * sin(theta) * cos(alpha);
+      state.vz = v_s * sin(alpha);
+
+      double totalTime = 4.0; // Simulate up to 4 seconds
+      double dt = totalTime / simStepsRK4;
+
+      for (int i = 0; i < simStepsRK4; i++) {
+        State nextState = rk4_step(state, dt);
+
+        if (nextState.vz < 0 && nextState.z < z) {
+          return bisectionMethodRK4(state, nextState, dt, z);
+        }
+
+        state = nextState;
+      }
+      return new Matrix<>(Nat.N2(), Nat.N1(), new double[] {0, 0});
+    }
+
     public static double dist(Matrix<N2, N1> v) {
       return sqrt(pow(v.get(0, 0), 2) + pow(v.get(1, 0), 2));
     }
 
-    private static final int MAX_ITERS = 10;
-    private static final double tolerance = 0.02;
+    private static final int MAX_ITERS = 3;
+    private static final double tolerance = 0.001;
 
     public static class TrajectorySolution {
       public LinearVelocity shooterVelocity;
@@ -127,23 +268,23 @@ public class ProjectileTrajectoryUtils {
         LinearVelocity botVelocityX,
         LinearVelocity botVelocityY,
         Translation3d targetPos,
-        Angle shooterAltitude) {
-      FixedTrajectorySolution noAirResSolution =
-          calcFiringSolution(
-              botVelocityX, botVelocityY, targetPos, shooterAltitude); // initial guess
+        Angle shooterAltitude,
+        FixedTrajectorySolution guessSolution) {
+      // if (guessSolution == null) {
+      guessSolution = calcFiringSolution(botVelocityX, botVelocityY, targetPos, shooterAltitude);
+      // }
       Matrix<N2, N1> guess =
           new Matrix<>(
               Nat.N2(),
               Nat.N1(),
               new double[] {
-                noAirResSolution.shooterVelocity.in(MetersPerSecond),
-                noAirResSolution.azimuth.in(Radians)
+                guessSolution.shooterVelocity.in(MetersPerSecond), guessSolution.azimuth.in(Radians)
               });
       Matrix<N2, N1> x = guess;
       try {
         for (int count = 0; count < MAX_ITERS; count++) {
           Matrix<N2, N1> f_x =
-              f_airResistance(
+              f_airResistance_RK4(
                       x,
                       botVelocityX.in(MetersPerSecond),
                       botVelocityY.in(MetersPerSecond),
@@ -169,14 +310,14 @@ public class ProjectileTrajectoryUtils {
                   shooterAltitude.in(Radians));
           x = x.minus(J.inv().times(f_x));
         }
-        return new TrajectorySolution(guess);
+        return new TrajectorySolution(x);
       } catch (Exception e) {
         return new TrajectorySolution(guess);
       }
     }
   }
 
-  private static final int simSteps = 1000;
+  private static final int simSteps = 100;
 
   public static Distance minDistTrajectory(
       LinearVelocity botVelocityX,

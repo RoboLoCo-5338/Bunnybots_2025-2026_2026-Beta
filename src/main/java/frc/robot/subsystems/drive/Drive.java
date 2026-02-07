@@ -43,6 +43,7 @@ import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -408,9 +409,18 @@ public class Drive extends SubsystemBase
     return states;
   }
 
+  public static boolean isFlipped =
+      DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red;
   /** Returns the measured chassis speeds of the robot. */
   @AutoLogOutput(key = "SwerveChassisSpeeds/Measured")
   public ChassisSpeeds getChassisSpeeds() {
+
+    ChassisSpeeds realVel =
+        ChassisSpeeds.fromRobotRelativeSpeeds(
+            kinematics.toChassisSpeeds(getModuleStates()),
+            isFlipped ? getRotation().plus(new Rotation2d(Math.PI)) : getRotation());
+    Logger.recordOutput("eSim/velX", realVel.vxMetersPerSecond);
+    Logger.recordOutput("eSim/velY", realVel.vyMetersPerSecond);
     return kinematics.toChassisSpeeds(getModuleStates());
   }
 
@@ -436,10 +446,10 @@ public class Drive extends SubsystemBase
   @AutoLogOutput(key = "Odometry/Robot")
   public Pose2d getPose() {
     Pose2d pose = poseEstimator.getEstimatedPosition();
-    Logger.recordOutput("Odometry/X", pose.getX());
-    Logger.recordOutput("Odometry/Y", pose.getY());
-    Logger.recordOutput("Odometry/Rotation", pose.getRotation().getRadians());
-    return poseEstimator.getEstimatedPosition();
+    Logger.recordOutput("eSim/X", pose.getX());
+    Logger.recordOutput("eSim/Y", pose.getY());
+    Logger.recordOutput("eSim/Rotation", pose.getRotation().getRadians());
+    return pose;
   }
 
   /** Returns the current odometry rotation. */

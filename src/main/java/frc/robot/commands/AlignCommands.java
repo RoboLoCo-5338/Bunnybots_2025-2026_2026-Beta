@@ -7,12 +7,14 @@ import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Nat;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N2;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
@@ -106,12 +108,102 @@ public class AlignCommands {
     return currentX;
   }
 
-  static Deque<LinearVelocity> velXinputs = new LinkedList<>();
-  static Deque<LinearVelocity> velYinputs = new LinkedList<>();
+  static LinkedList<LinearVelocity> velXinputs = new LinkedList<>();
+  static LinkedList<LinearVelocity> velYinputs = new LinkedList<>();
 
   static LinkedList<Double> appliedVelX = new LinkedList<>();
   static LinkedList<Double> appliedVelY = new LinkedList<>();
   static LinkedList<Double> appliedOmega = new LinkedList<>();
+
+  double maxAngularAccel = 3.0;
+  double maxAngularVel = 3.0;
+
+  public static double computeOmega(Drive drive, Shooter shooter, DoubleSupplier kShooter) {
+    double xPos0 =
+        drive.getPose().getX() + integrate(appliedVelX, deltaT.in(Seconds), numAdvanceOmega);
+    double yPos0 =
+        drive.getPose().getY() + integrate(appliedVelY, deltaT.in(Seconds), numAdvanceOmega);
+    double theta_1 =
+        (drive.getRotation().getRadians()
+                    + integrate(appliedOmega, deltaT.in(Seconds), numAdvanceOmega)
+                    + Math.PI)
+                % (2 * Math.PI)
+            - Math.PI;
+
+    LinearVelocity velX0 = velXinputs.get(0);
+    LinearVelocity velY0 = velYinputs.get(0);
+    TrajectorySolution solution0 =
+        ProjectileTrajectoryUtils.AirResistanceSolver.newtonRhapsonSolveAirResistance(
+            velX0, velY0, calcTargetDisplacement(xPos0, yPos0), shooterAltitude, lastSolution);
+
+    LinearVelocity velX1 = velXinputs.get(1);
+    LinearVelocity velY1 = velYinputs.get(1);
+    double xPos1 = xPos0 += velX0.times(deltaT).in(Meters);
+    double yPos1 = yPos0 += velY0.times(deltaT).in(Meters);
+    FixedTrajectorySolution solution0Fixed =
+        new FixedTrajectorySolution(solution0.azimuth, solution0.shooterVelocity);
+    TrajectorySolution solution1 =
+        ProjectileTrajectoryUtils.AirResistanceSolver.newtonRhapsonSolveAirResistance(
+            velX1, velY1, calcTargetDisplacement(xPos1, yPos1), shooterAltitude, solution0Fixed);
+
+    double theta0 = (solution0.azimuth.in(Radians) + Math.PI) % (2 * Math.PI) - Math.PI;
+    double theta1 = (solution1.azimuth.in(Radians) + Math.PI) % (2 * Math.PI) - Math.PI;
+    Logger.recordOutput("computeOmega/theta_1", theta_1);
+    Logger.recordOutput("computeOmega/theta0", theta0);
+    Logger.recordOutput("computeOmega/theta1", theta1);
+
+    double omega_1 = (appliedOmega.peekFirst() + Math.PI) % (2 * Math.PI) - Math.PI;
+    // compute new omega, accounting for -Pi to Pi wraparound
+    double omega0 = ((theta0 - theta_1 + Math.PI) % (2 * Math.PI) - Math.PI) / deltaT.in(Seconds);
+    double omega1 = ((theta1 - theta0 + Math.PI) % (2 * Math.PI) - Math.PI) / deltaT.in(Seconds);
+
+    double minAngularAccel = 6.0;
+    double maxAngularAccel = 9.0;
+    double maxAngularVel = 3.0;
+    omega0 = Math.max(Math.min(omega0, maxAngularVel), -maxAngularVel);
+    omega1 = Math.max(Math.min(omega1, maxAngularVel), -maxAngularVel);
+    Logger.recordOutput("computeOmega/omega0", omega0);
+    Logger.recordOutput("computeOmega/omega1", omega1);
+
+    double alpha0 = (omega0 - omega_1) / deltaT.in(Seconds);
+    double alpha1 = (omega1 - omega0) / deltaT.in(Seconds);
+    Logger.recordOutput("computeOmega/alpha0", alpha0);
+    Logger.recordOutput("computeOmega/alpha1", alpha1);
+
+    double deltaTheta = ((theta0 - theta_1 + Math.PI) % (2 * Math.PI) - Math.PI);
+    Logger.recordOutput("computeOmega/deltaTheta", deltaTheta);
+
+    AngularVelocity pidOmega =
+        RadiansPerSecond.of(azimuthMovingPid.calculate(drive.getRotation().getRadians(), theta0));
+    double pidOmegaTrap =
+        azimuthMovingPidTrap.calculate(
+            drive.getRotation().getRadians(), new TrapezoidProfile.State(theta0, omega1));
+    // if (azimuthMovingPid.atSetpoint()) {
+    //   pidOmega = RadiansPerSecond.of(0);
+    // }
+    return pidOmegaTrap;
+
+    // if (deltaTheta < 0.2 && Math.abs(alpha0) < 16 && Math.abs(alpha1) < 16) {
+    //   Logger.recordOutput("computeOmega/if", 0);
+    //   return (omega0 + omega_1) / 2;
+    // }
+
+    // double alphaReq = (omega1 * omega1 - omega_1 * omega_1) / (2 * deltaTheta);
+    // Logger.recordOutput("computeOmega/alphaReq", alphaReq);
+    // if (Math.abs(alphaReq) > maxAngularAccel) {
+    //   alphaReq = Math.copySign(maxAngularAccel, alphaReq);
+    // }
+    // if (Math.abs(alphaReq) > minAngularAccel) {
+    //   Logger.recordOutput("computeOmega/if", 1);
+    //   return omega_1 + alphaReq * deltaT.in(Seconds);
+    // }
+    // Logger.recordOutput("computeOmega/if", 2);
+    // return omega_1 + Math.copySign(maxAngularAccel, deltaTheta) * deltaT.in(Seconds);
+  }
+
+  static FixedTrajectorySolution lastSolution = null;
+
+  static ProfiledPIDController azimuthMovingPidTrap;
 
   public static Command moveShootCommand(
       Drive drive,
@@ -119,10 +211,27 @@ public class AlignCommands {
       DoubleSupplier kShooter,
       LinearVelocity maxSpeed,
       DoubleSupplier inputX,
-      DoubleSupplier inputY) {
+      DoubleSupplier inputY,
+      DoubleSupplier kPtheta,
+      DoubleSupplier kItheta,
+      DoubleSupplier kDtheta) {
     try {
       return Commands.runOnce(
               () -> {
+                lastSolution = null;
+
+                azimuthMovingPid =
+                    new PIDController(
+                        kPtheta.getAsDouble(), kItheta.getAsDouble(), kDtheta.getAsDouble());
+                azimuthMovingPidTrap =
+                    new ProfiledPIDController(
+                        kPtheta.getAsDouble(),
+                        kItheta.getAsDouble(),
+                        kDtheta.getAsDouble(),
+                        new TrapezoidProfile.Constraints(5, 10));
+
+                azimuthMovingPid.enableContinuousInput(-Math.PI, Math.PI);
+                azimuthMovingPid.setTolerance(0.001);
                 appliedVelX.clear();
                 appliedVelY.clear();
                 appliedOmega.clear();
@@ -135,7 +244,7 @@ public class AlignCommands {
                 }
                 velXinputs.clear();
                 velYinputs.clear();
-                for (int a = 0; a < 1; a++) {
+                for (int a = 0; a < 3; a++) {
                   velXinputs.addLast(MetersPerSecond.of(0.0));
                   velYinputs.addLast(MetersPerSecond.of(0.0));
                 }
@@ -158,14 +267,13 @@ public class AlignCommands {
                     Pair<LinearVelocity, LinearVelocity> vIn =
                         clampInputs(inputX, inputY, maxSpeed);
                     Pair<LinearVelocity, LinearVelocity> vLimited =
-                        limitVelocityByAccel(
-                            vIn,
-                            MetersPerSecond.of(appliedVelX.peekFirst()),
-                            MetersPerSecond.of(appliedVelY.peekFirst()));
+                        limitVelocityByAccel(vIn, (velXinputs.peekLast()), (velYinputs.peekLast()));
+                    velXinputs.pollFirst();
+                    velYinputs.pollFirst();
                     velXinputs.addLast(vLimited.getFirst());
                     velYinputs.addLast(vLimited.getSecond());
-                    LinearVelocity velX = velXinputs.pollFirst();
-                    LinearVelocity velY = velYinputs.pollFirst();
+                    LinearVelocity velX = velXinputs.get(0);
+                    LinearVelocity velY = velYinputs.get(0);
 
                     double startSolve = HALUtil.getFPGATime();
                     TrajectorySolution solution =
@@ -174,7 +282,10 @@ public class AlignCommands {
                                 velX,
                                 velY,
                                 calcTargetDisplacement(xPosFuture, yPosFuture),
-                                shooterAltitude);
+                                shooterAltitude,
+                                lastSolution);
+                    lastSolution =
+                        new FixedTrajectorySolution(solution.azimuth, solution.shooterVelocity);
                     double endSolve = HALUtil.getFPGATime();
                     Logger.recordOutput(
                         "moveShootCommand/Calculated/solveTimeMS",
@@ -218,11 +329,20 @@ public class AlignCommands {
                     } else {
                       omega = 0.0;
                     }
-
+                    omega = computeOmega(drive, shooter, kShooter);
+                    Logger.recordOutput("moveShootCommand/Applied/omega", omega);
+                    
+                    if(Constants.CURRENT_MODE == Constants.Mode.REAL){
                     drive.runVelocityDangerous(
                         ChassisSpeeds.fromFieldRelativeSpeeds(
-                            velX, velY, RadiansPerSecond.of(omega), new Rotation2d(thetaFuture)));
-                    appliedVelX.addFirst(velX.in(MetersPerSecond));
+                            velX.times(0.9158924782), velY.times(0.9158924782), RadiansPerSecond.of(omega), drive.getRotation()));
+                    }else{
+                    drive.runVelocityDangerous(
+                        ChassisSpeeds.fromFieldRelativeSpeeds(
+                            velX, velY, RadiansPerSecond.of(omega), drive.getRotation()));
+                    }
+                    
+                            appliedVelX.addFirst(velX.in(MetersPerSecond));
                     appliedVelY.addFirst(velY.in(MetersPerSecond));
                     appliedOmega.addFirst(omega);
                     Logger.recordOutput("moveShootCommand/Applied/velX", velX.in(MetersPerSecond));
@@ -231,19 +351,37 @@ public class AlignCommands {
                     appliedVelX.pollLast();
                     appliedVelY.pollLast();
                     appliedOmega.pollLast();
+
+                    ChassisSpeeds realVel =
+                        ChassisSpeeds.fromRobotRelativeSpeeds(
+                            drive.getChassisSpeeds(),
+                            isFlipped
+                                ? drive.getRotation().plus(new Rotation2d(Math.PI))
+                                : drive.getRotation());
+                    var solutionShooter =
+                        ProjectileTrajectoryUtils.AirResistanceSolver
+                            .newtonRhapsonSolveAirResistance(
+                                MetersPerSecond.of(realVel.vxMetersPerSecond),
+                                MetersPerSecond.of(realVel.vyMetersPerSecond),
+                                calcTargetDisplacement(
+                                    drive.getPose().getX(), drive.getPose().getY()),
+                                shooterAltitude,
+                                lastSolution);
+
                     AngularVelocity shooterVel =
                         RadiansPerSecond.of(
-                            solution.shooterVelocity.in(MetersPerSecond) * kShooter.getAsDouble());
+                            solutionShooter.shooterVelocity.in(MetersPerSecond)
+                                * kShooter.getAsDouble());
                     if (Constants.CURRENT_MODE == Constants.Mode.REAL) {
-                      if (shooterVel.in(RadiansPerSecond) > 0)
+                      if (shooterVel.in(RadiansPerSecond) > 0
+                          && shooterVel.in(RadiansPerSecond) < 500)
                         shooter.setShooterVelocityAndAcceleration(
-                            shooterVel.times(0.1647809660 * 0.9890681004),
-                            lastShooterVel.times(0.1647809660 * 0.9890681004));
+                            shooterVel.times(1.0239429013), lastShooterVel.times(1.0239429013));
                     } else if (Constants.CURRENT_MODE == Constants.Mode.SIM) {
                       if (shooterVel.in(RadiansPerSecond) > 0
                           && shooterVel.in(RadiansPerSecond) < 500)
                         shooter.setShooterVelocityAndAcceleration(
-                            shooterVel.times(1), lastShooterVel.times(1));
+                            shooterVel.times(1.0231944547), lastShooterVel.times(1.0231944547));
                     }
                     Logger.recordOutput(
                         "testInputShape/Applied/shooterVel", shooterVel.in(RadiansPerSecond));
@@ -287,7 +425,7 @@ public class AlignCommands {
   private static Time deltaT = Milliseconds.of(20);
 
   private static int numAdvanceOmega =
-      Constants.CURRENT_MODE == Constants.Mode.SIM ? 6 : 4; // compensating for pid lag
+      Constants.CURRENT_MODE == Constants.Mode.SIM ? 6 : 8; // compensating for pid lag
   private static int numAdvanceShooter = 4;
 
   public static Command testInputShape(
@@ -589,13 +727,30 @@ public class AlignCommands {
             hubLocation.getZ() - shooterOffset.getZ(),
             shooterAltitude.in(Radians));
     Translation3d target = calcTargetDisplacement(drive.getPose().getX(), drive.getPose().getY());
+    Logger.recordOutput(
+        "eSim/shooterVel", shooterVel.in(RadiansPerSecond) / kShooter.getAsDouble());
 
     error =
         Meters.of(
             Math.hypot(
                 target.getX() - displacement.get(0, 0), target.getY() - displacement.get(1, 0)));
     Logger.recordOutput("testInputShape/Real/minDistTrajectory", error);
+    var idealNow =
+        ProjectileTrajectoryUtils.AirResistanceSolver.newtonRhapsonSolveAirResistance(
+            MetersPerSecond.of(realVel.vxMetersPerSecond),
+            MetersPerSecond.of(realVel.vyMetersPerSecond),
+            hubLocation.minus(
+                shooterOffset.plus(
+                    new Translation3d(drive.getPose().getX(), drive.getPose().getY(), 0))),
+            shooterAltitude,
+            null);
+
+    Logger.recordOutput("testInputShape/RealCalc/theta", idealNow.azimuth);
+    Logger.recordOutput("testInputShape/RealCalc/shooterVel", idealNow.shooterVelocity);
+    idealLast = new FixedTrajectorySolution(idealNow.azimuth, idealNow.shooterVelocity);
   }
+
+  static FixedTrajectorySolution idealLast = null;
 
   public static void pollIdealDelayed() {
     Logger.recordOutput("testInputShape/Ideal/posX", posXinputs.pollFirst());
@@ -611,7 +766,7 @@ public class AlignCommands {
 
   //   Torque maxTorque = NewtonMeters.of(10);
   //   Force maxForce = Newtons.of(10);
-  static LinearAcceleration maxAcceleration = MetersPerSecondPerSecond.of(1);
+  static LinearAcceleration maxAcceleration = MetersPerSecondPerSecond.of(4);
 
   private static Pair<LinearVelocity, LinearVelocity> limitVelocityByAccel(
       Pair<LinearVelocity, LinearVelocity> velocity,
