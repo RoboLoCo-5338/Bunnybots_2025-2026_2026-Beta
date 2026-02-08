@@ -6,6 +6,7 @@ import static java.lang.Math.pow;
 import static java.lang.Math.sin;
 import static java.lang.Math.sqrt;
 
+import edu.wpi.first.hal.HALUtil;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Nat;
 import edu.wpi.first.math.geometry.Translation3d;
@@ -246,7 +247,7 @@ public class ProjectileTrajectoryUtils {
       return sqrt(pow(v.get(0, 0), 2) + pow(v.get(1, 0), 2));
     }
 
-    private static final int MAX_ITERS = 17;
+    private static final int MAX_ITERS = 4;
     private static final double tolerance = 0.001;
 
     public static class TrajectorySolution {
@@ -270,6 +271,7 @@ public class ProjectileTrajectoryUtils {
         Translation3d targetPos,
         Angle shooterAltitude,
         FixedTrajectorySolution guessSolution) {
+      double start = HALUtil.getFPGATime();
       if (guessSolution == null) {
         guessSolution = calcFiringSolution(botVelocityX, botVelocityY, targetPos, shooterAltitude);
       }
@@ -283,6 +285,7 @@ public class ProjectileTrajectoryUtils {
       Matrix<N2, N1> x = guess;
       try {
         for (int count = 0; count < MAX_ITERS; count++) {
+          var startRk4 = HALUtil.getFPGATime();
           Matrix<N2, N1> f_x =
               f_airResistance_RK4(
                       x,
@@ -293,6 +296,7 @@ public class ProjectileTrajectoryUtils {
                   .minus(
                       new Matrix<>(
                           Nat.N2(), Nat.N1(), new double[] {targetPos.getX(), targetPos.getY()}));
+          Logger.recordOutput("trajectoryCalc/rk4Time" + count, (HALUtil.getFPGATime() - startRk4));
           if (count % 1 == 0) {
             // System.out.println("\niteration: " + (count + 1) + "  f_x:" + dist(f_x) + "\n");
             // System.out.println(x);
@@ -301,6 +305,7 @@ public class ProjectileTrajectoryUtils {
             // System.out.println("\n");
           }
           // if (dist(f_x) < tolerance) return new TrajectorySolution(x);
+          startRk4 = HALUtil.getFPGATime();
           Matrix<N2, N2> J =
               calcJacobian(
                   x,
@@ -308,7 +313,13 @@ public class ProjectileTrajectoryUtils {
                   botVelocityY.in(MetersPerSecond),
                   targetPos.getZ(),
                   shooterAltitude.in(Radians));
+          Logger.recordOutput(
+              "trajectoryCalc/jacobian" + count, (HALUtil.getFPGATime() - startRk4));
           x = x.minus(J.inv().times(f_x));
+
+          if (HALUtil.getFPGATime() - start > 0.005 * 1e6) {
+            throw new Exception("Timed out");
+          }
         }
         return new TrajectorySolution(x);
       } catch (Exception e) {

@@ -22,6 +22,7 @@ import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Time;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.Constants;
@@ -219,7 +220,7 @@ public class AlignCommands {
                         kPtheta.getAsDouble(),
                         kItheta.getAsDouble(),
                         kDtheta.getAsDouble(),
-                        new TrapezoidProfile.Constraints(3, 6));
+                        new TrapezoidProfile.Constraints(3, 13));
                 azimuthMovingPidTrap.enableContinuousInput(-Math.PI, Math.PI);
                 azimuthMovingPidTrap.setTolerance(0.001);
                 azimuthMovingPidTrap.reset(
@@ -247,6 +248,7 @@ public class AlignCommands {
           .andThen(
               Commands.runEnd(
                   () -> {
+                    Threads.setCurrentThreadPriority(true, 80);
                     double xPosFuture =
                         drive.getPose().getX()
                             + integrate(appliedVelX, deltaT.in(Seconds), numAdvanceVel);
@@ -285,6 +287,7 @@ public class AlignCommands {
                     Logger.recordOutput(
                         "moveShootCommand/Calculated/solveTimeMS",
                         (endSolve - startSolve) / 1000.0);
+
                     AngularVelocity shooterAngularVelocity =
                         RadiansPerSecond.of(
                             solution.shooterVelocity.in(MetersPerSecond) * kShooter.getAsDouble());
@@ -382,9 +385,10 @@ public class AlignCommands {
                             shooterVel.times(1.0231944547), lastShooterVel.times(1.0231944547));
                     }
                     Logger.recordOutput(
-                        "testInputShape/Applied/shooterVel", shooterVel.in(RadiansPerSecond));
+                        "moveShootCommand/Applied/shooterVel", shooterVel.in(RadiansPerSecond));
                     logRealPlusError(drive, shooter, kShooter);
                     lastShooterVel = shooterVel;
+                    Threads.setCurrentThreadPriority(true, 10);
                   },
                   () -> {
                     drive.stop();
@@ -392,7 +396,7 @@ public class AlignCommands {
                   }));
 
     } catch (Exception e) {
-      DriverStation.reportError("testInputShape", e.getStackTrace());
+      DriverStation.reportError("moveShootCommand", e.getStackTrace());
       return Commands
           .none(); // catches exception in command creation during boot, prevents BOOT LOOP
     }
@@ -415,24 +419,24 @@ public class AlignCommands {
      * record real state
      *
      */
-    Logger.recordOutput("testInputShape/Real/posX", drive.getPose().getMeasureX());
-    Logger.recordOutput("testInputShape/Real/posY", drive.getPose().getMeasureY());
+    Logger.recordOutput("moveShootCommand/Real/posX", drive.getPose().getMeasureX());
+    Logger.recordOutput("moveShootCommand/Real/posY", drive.getPose().getMeasureY());
 
     ChassisSpeeds realVel =
         ChassisSpeeds.fromRobotRelativeSpeeds(
             drive.getChassisSpeeds(),
             isFlipped ? drive.getRotation().plus(new Rotation2d(Math.PI)) : drive.getRotation());
-    Logger.recordOutput("testInputShape/Real/vX", MetersPerSecond.of(realVel.vxMetersPerSecond));
-    Logger.recordOutput("testInputShape/Real/vY", MetersPerSecond.of(realVel.vyMetersPerSecond));
+    Logger.recordOutput("moveShootCommand/Real/vX", MetersPerSecond.of(realVel.vxMetersPerSecond));
+    Logger.recordOutput("moveShootCommand/Real/vY", MetersPerSecond.of(realVel.vyMetersPerSecond));
     Logger.recordOutput(
-        "testInputShape/Real/omega",
+        "moveShootCommand/Real/omega",
         RadiansPerSecond.of(drive.getChassisSpeeds().omegaRadiansPerSecond));
     AngularVelocity shooterVel = shooter.inputs1.shooterVelocityRadPerSec;
     if (Constants.CURRENT_MODE == Constants.Mode.SIM) {
       // shooterVel = shooterVel.times(260 / 16.0 * 200.0 / 204);
     }
-    Logger.recordOutput("testInputShape/Real/shooterVel", shooterVel.in(RadiansPerSecond));
-    Logger.recordOutput("testInputShape/Real/theta", drive.getPose().getRotation());
+    Logger.recordOutput("moveShootCommand/Real/shooterVel", shooterVel.in(RadiansPerSecond));
+    Logger.recordOutput("moveShootCommand/Real/theta", drive.getPose().getRotation());
 
     /*
      *
@@ -474,7 +478,7 @@ public class AlignCommands {
         Meters.of(
             Math.hypot(
                 target.getX() - displacement.get(0, 0), target.getY() - displacement.get(1, 0)));
-    Logger.recordOutput("testInputShape/Real/minDistTrajectory", error);
+    Logger.recordOutput("moveShootCommand/Real/minDistTrajectory", error);
     var idealNow =
         ProjectileTrajectoryUtils.AirResistanceSolver.newtonRhapsonSolveAirResistance(
             MetersPerSecond.of(realVel.vxMetersPerSecond),
@@ -485,8 +489,10 @@ public class AlignCommands {
             shooterAltitude,
             null);
 
-    Logger.recordOutput("testInputShape/RealCalc/theta", idealNow.azimuth);
-    Logger.recordOutput("testInputShape/RealCalc/shooterVel", idealNow.shooterVelocity);
+    Logger.recordOutput("moveShootCommand/RealCalc/theta", idealNow.azimuth);
+    Logger.recordOutput(
+        "moveShootCommand/RealCalc/shooterVel",
+        idealNow.shooterVelocity.in(MetersPerSecond) * kShooter.getAsDouble());
     idealLast = new FixedTrajectorySolution(idealNow.azimuth, idealNow.shooterVelocity);
   }
 

@@ -322,7 +322,7 @@ public class RobotContainer {
             .add("Kd", 0.8) // Key "Kd", default 0.001
             .withWidget("NumberSlider")
             .getEntry();
-    kShooterEntry = tuningTab.add("Kshooter", 1).withWidget("NumberSlider").getEntry();
+    kShooterEntry = tuningTab.add("Kshooter", 29.5).withWidget("NumberSlider").getEntry();
     kDisplacementXEntry =
         tuningTab
             .add(
