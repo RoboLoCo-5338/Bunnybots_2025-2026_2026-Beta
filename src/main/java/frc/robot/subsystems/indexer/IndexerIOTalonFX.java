@@ -29,6 +29,7 @@ public class IndexerIOTalonFX extends IndexerIO {
   private final StatusSignal<Voltage> indexerAppliedVolts;
   private final StatusSignal<Current> indexerCurrent;
   private final StatusSignal<Temperature> indexerTemperature;
+  @SuppressWarnings("unused")
   private final StatusSignal<Integer> indexerVersion;
 
   private final StatusSignal<Angle> indexerPosition;
@@ -38,7 +39,7 @@ public class IndexerIOTalonFX extends IndexerIO {
   private final LaserCan lcIndexer;
 
   public final TalonFX indexerMotor =
-      new TalonFX(IndexerConstants.INDEXERID, TunerConstants.DrivetrainConstants.CANBusName);
+      new TalonFX(IndexerConstants.INDEXERID, TunerConstants.kCANBus.getName());
   final VelocityVoltage indexerVelocityRequest = new VelocityVoltage(0.0);
   final VoltageOut indexerOpenLoop = new VoltageOut(0.0);
 
