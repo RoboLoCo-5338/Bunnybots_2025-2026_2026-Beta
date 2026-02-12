@@ -21,7 +21,7 @@ public class Constants {
   public static final Distance FIELD_HEIGHT = Meters.of(8.2296);
 
   public static final MomentOfInertiaUnit PoundSquareInch =
-      Pounds.mult(InchesPerSecond).mult(Inches).mult(RadiansPerSecond);
+      Pounds.mult(InchesPerSecond).mult(Inches).per(RadiansPerSecond);
   public static final MomentOfInertiaUnit PoundSquareInches = PoundSquareInch;
 
   public static enum Mode {
