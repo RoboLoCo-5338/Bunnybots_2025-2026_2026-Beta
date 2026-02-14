@@ -68,7 +68,6 @@ public class RobotContainer {
   private final Drive drive;
   private SwerveDriveSimulation driveSimulation = null;
 
-  @SuppressWarnings("unused")
   private final Vision vision;
 
   private final GroundIntake groundIntake;

@@ -37,7 +37,7 @@ public class GroundIntakeRollerIOTalonFX extends GroundIntakeRollerIO {
   public final TalonFX groundIntakeRollerMotor =
       new TalonFX(
           GroundIntakeRollerConstants.GROUNDINTAKE_ROLLER_MOTOR_ID,
-          TunerConstants.DrivetrainConstants.CANBusName);
+          TunerConstants.kCANBus.getName());
   final VelocityVoltage groundIntakeRollerVelocityRequest = new VelocityVoltage(0.0);
   final VoltageOut groundIntakeRollerOpenLoop = new VoltageOut(0.0);
 

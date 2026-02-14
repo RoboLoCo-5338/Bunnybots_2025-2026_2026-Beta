@@ -63,7 +63,6 @@ import org.ironmaple.simulation.drivesims.configs.DriveTrainSimulationConfig;
 import org.ironmaple.simulation.drivesims.configs.SwerveModuleSimulationConfig;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
-import org.littletonrobotics.junction.AutoLog;
 
 public class Drive extends SubsystemBase
     implements Vision.VisionConsumer, SysIdSubsystem.SysIdSingleSubsystem {
