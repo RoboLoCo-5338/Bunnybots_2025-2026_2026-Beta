@@ -110,7 +110,6 @@ Temporary Items
 !.vscode/launch.json
 !.vscode/extensions.json
 .code-workspace
-.code-workspace
 
 ### Windows ###
 # Windows thumbnail cache files
@@ -172,7 +171,6 @@ out/
 
 # Simulation GUI and other tools window save file
 networktables.json
-simgui*.json
 simgui*.json
 *-window.json
 
