@@ -79,8 +79,8 @@ public class Module {
     state.cosineScale(inputs.turnAbsolutePosition);
 
     // Apply setpoints
-    io.setDriveVelocity(state.speedMetersPerSecond / constants.WheelRadius);
     io.setTurnPosition(state.angle);
+    io.setDriveVelocity(state.speedMetersPerSecond / constants.WheelRadius);
   }
 
   /** Runs the module with the specified output while controlling to zero degrees. */

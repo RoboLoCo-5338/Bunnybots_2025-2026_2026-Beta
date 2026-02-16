@@ -138,17 +138,18 @@ public final class PhoenixUtil {
         // Adjust steer motor PID gains for simulation
         .withSteerMotorGains(
             new Slot0Configs()
-                .withKP(1.4)
+                .withKP(120)
                 .withKI(0)
-                .withKD(0.00)
-                .withKS(0.15456)
-                .withKV(0.76303)
+                .withKD(0.5)
+                .withKS(0.1)
+                .withKV(2.66)
+                .withKA(0)
                 .withStaticFeedforwardSign(StaticFeedforwardSignValue.UseClosedLoopSign))
-        .withSteerMotorGearRatio(16.0)
-        // Adjust friction voltages
-        .withDriveFrictionVoltage(Volts.of(0.1))
-        .withSteerFrictionVoltage(Volts.of(0.05))
-        // Adjust steer inertia
-        .withSteerInertia(KilogramSquareMeters.of(0.05));
+        .withSteerMotorGearRatio(21.428571428571427);
+    // Adjust friction voltages
+    // .withDriveFrictionVoltage(Volts.of(0.1))
+    // .withSteerFrictionVoltage(Volts.of(0.05))
+    // Adjust steer inertia
+    // .withSteerInertia(KilogramSquareMeters.of(0.05));
   }
 }

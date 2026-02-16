@@ -20,6 +20,27 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
+// GitHub Packages credentials for private vendordeps
+def ghUsername = project.hasProperty('user') ? project.property('user') : System.getenv('GITHUB_ACTOR')
+def ghToken = project.hasProperty('token') ? project.property('token') : System.getenv('GITHUB_TOKEN')
+
+// Helper to apply credentials to GitHub Packages repos
+def applyGitHubCredentials = { repo ->
+    if (repo instanceof MavenArtifactRepository && repo.url.toString().contains("maven.pkg.github.com")) {
+        repo.credentials {
+            username = ghUsername
+            password = ghToken
+        }
+    }
+}
+
+// Apply credentials to repositories added by GradleRIO vendordeps (already added at this point)
+repositories.all(applyGitHubCredentials)
+
+// Apply credentials to any future GitHub Packages repositories
+repositories.whenObjectAdded(applyGitHubCredentials)
+
+
 def ROBOT_MAIN_CLASS = "frc.robot.Main"
 
 // Define my targets (RoboRIO) and artifacts (deployable files)

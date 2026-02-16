@@ -314,7 +314,7 @@ public class RobotContainer {
             .getEntry();
     kIEntry =
         tuningTab
-            .add("Ki", 0.1) // Key "Ki", default 0.001
+            .add("Ki", 0.05) // Key "Ki", default 0.001
             .withWidget("NumberSlider")
             .getEntry();
     kDEntry =
@@ -455,7 +455,7 @@ public class RobotContainer {
                 () -> getKd()));
 
     driverController
-        .b()
+        .rightTrigger()
         .whileFalse(
             DriveCommands.joystickDrive(
                 drive,

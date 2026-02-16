@@ -1,8 +1,7 @@
 import static edu.wpi.first.units.Units.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.Nat;
+import com.nodes.jni.nodesJNI;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.units.measure.*;
 import frc.robot.util.ProjectileTrajectoryUtils;
@@ -22,25 +21,43 @@ class NewtonSolverTest {
   void shutdown() throws Exception {}
 
   @Test
-  void testJacobian() {
-    ProjectileTrajectoryUtils.AirResistanceSolver.calcJacobian(
-        new Matrix<>(Nat.N2(), Nat.N1(), new double[] {0.0, 0.0}),
-        1.0,
-        1.0,
-        1.81,
-        Degrees.of(60).in(Radians));
-    assertEquals(0.5, 0.5, DELTA);
+  void testSolve() {
+    for (int i = 0; i < 10; i++) {
+      runSingleSolve();
+    }
   }
 
-  @Test
-  void testSolve() {
+  void runSingleSolve() {
+    double vX = Math.random() * 6 - 3;
+    double vY = Math.random() * 6 - 3;
+
+    double x = Math.random() * 4 + 3;
+    double y = Math.random() * 4 + 3;
+
     TrajectorySolution result =
         ProjectileTrajectoryUtils.AirResistanceSolver.newtonRhapsonSolveAirResistance(
-            MetersPerSecond.of(1.0),
-            MetersPerSecond.of(1.0),
-            new Translation3d(2, 4, 1.81),
+            MetersPerSecond.of(vX),
+            MetersPerSecond.of(vY),
+            new Translation3d(x, y, 1.81),
             Degrees.of(50),
             null);
-    assertEquals(1, 1, 0.01);
+    nodesJNI.TrajectorySolution jniResult =
+        nodesJNI.newtonRhapsonSolveAirResistance(vX, vY, x, y, 1.81, Degrees.of(50).in(Radians));
+
+    System.out.println(
+        "Java Result: "
+            + result.shooterVelocity.in(MetersPerSecond)
+            + " m/s, "
+            + result.azimuth.in(Degrees)
+            + " degrees");
+    System.out.println(
+        "JNI Result: "
+            + jniResult.shooterVel
+            + " m/s, "
+            + jniResult.azimuth * (180.0 / Math.PI)
+            + " degrees");
+
+    assertEquals(result.shooterVelocity.in(MetersPerSecond), jniResult.shooterVel, 0.01);
+    assertEquals(result.azimuth.in(Radians), jniResult.azimuth, 0.01);
   }
 }

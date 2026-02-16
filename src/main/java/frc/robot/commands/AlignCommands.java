@@ -2,21 +2,20 @@ package frc.robot.commands;
 
 import static edu.wpi.first.units.Units.*;
 
+import com.nodes.jni.nodesJNI;
+import com.nodes.jni.nodesJNI.TrajectorySolution;
 import edu.wpi.first.hal.HALUtil;
-import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.Nat;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.controller.ProfiledPIDController;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.numbers.N1;
-import edu.wpi.first.math.numbers.N2;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
-import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.LinearAcceleration;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Time;
@@ -28,9 +27,6 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.Constants;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.shooter.Shooter;
-import frc.robot.util.ProjectileTrajectoryUtils;
-import frc.robot.util.ProjectileTrajectoryUtils.AirResistanceSolver.TrajectorySolution;
-import frc.robot.util.ProjectileTrajectoryUtils.FixedTrajectorySolution;
 import java.util.LinkedList;
 import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
@@ -44,7 +40,7 @@ public class AlignCommands {
   private static Translation3d hubLocation =
       new Translation3d(0, 0, (2.03 + 1.52) / 2); // lunar converter 152cm bottom - 203cm top
   private static final Translation3d shooterOffset =
-      new Translation3d(-Inches.of(0.1956095).in(Meters), 0, Inches.of(16.081505).in(Meters));
+      new Translation3d(-0.5, 0, Inches.of(16.081505).in(Meters));
   private static final Angle shooterAltitude = Degrees.of(50);
 
   private static AngularVelocity lastOmega = RadiansPerSecond.of(0);
@@ -80,8 +76,16 @@ public class AlignCommands {
     }
   }
 
+  public static Translation3d calcShooterPos(Pose2d pose) {
+    Translation3d currentShooter =
+        shooterOffset.rotateBy(
+            new Rotation3d(
+                Radians.of(0), Radians.of(0), Radians.of(pose.getRotation().getRadians())));
+    return currentShooter.plus(new Translation3d(pose.getX(), pose.getY(), 0));
+  }
+
   public static Translation3d calcTargetDisplacement(double xPos, double yPos) {
-    return hubLocation.minus(shooterOffset.plus(new Translation3d(xPos, yPos, 0)));
+    return hubLocation.minus(new Translation3d(xPos, yPos, 0));
   }
 
   static double integrateTrapezoid(LinkedList<Double> values, double dt, int t) {
@@ -116,10 +120,10 @@ public class AlignCommands {
   double maxAngularVel = 3.0;
 
   public static double computeOmega(Drive drive, Shooter shooter, DoubleSupplier kShooter) {
-    double xPos0 =
-        drive.getPose().getX() + integrate(appliedVelX, deltaT.in(Seconds), numAdvanceOmega);
-    double yPos0 =
-        drive.getPose().getY() + integrate(appliedVelY, deltaT.in(Seconds), numAdvanceOmega);
+
+    var shooterPos = calcShooterPos(drive.getPose());
+    double xPos0 = shooterPos.getX() + integrate(appliedVelX, deltaT.in(Seconds), numAdvanceOmega);
+    double yPos0 = shooterPos.getY() + integrate(appliedVelY, deltaT.in(Seconds), numAdvanceOmega);
     double theta_1 =
         (drive.getRotation().getRadians()
                     + integrate(appliedOmega, deltaT.in(Seconds), numAdvanceOmega)
@@ -129,22 +133,32 @@ public class AlignCommands {
 
     LinearVelocity velX0 = velXinputs.get(0);
     LinearVelocity velY0 = velYinputs.get(0);
+    var targetPos0 = calcTargetDisplacement(xPos0, yPos0);
     TrajectorySolution solution0 =
-        ProjectileTrajectoryUtils.AirResistanceSolver.newtonRhapsonSolveAirResistance(
-            velX0, velY0, calcTargetDisplacement(xPos0, yPos0), shooterAltitude, lastSolution);
+        nodesJNI.newtonRhapsonSolveAirResistance(
+            velX0.in(MetersPerSecond),
+            velY0.in(MetersPerSecond),
+            targetPos0.getX(),
+            targetPos0.getY(),
+            targetPos0.getZ(),
+            shooterAltitude.in(Radians));
 
     LinearVelocity velX1 = velXinputs.get(1);
     LinearVelocity velY1 = velYinputs.get(1);
     double xPos1 = xPos0 += velX0.times(deltaT).in(Meters);
     double yPos1 = yPos0 += velY0.times(deltaT).in(Meters);
-    FixedTrajectorySolution solution0Fixed =
-        new FixedTrajectorySolution(solution0.azimuth, solution0.shooterVelocity);
+    var targetPos1 = calcTargetDisplacement(xPos1, yPos1);
     TrajectorySolution solution1 =
-        ProjectileTrajectoryUtils.AirResistanceSolver.newtonRhapsonSolveAirResistance(
-            velX1, velY1, calcTargetDisplacement(xPos1, yPos1), shooterAltitude, solution0Fixed);
+        nodesJNI.newtonRhapsonSolveAirResistance(
+            velX1.in(MetersPerSecond),
+            velY1.in(MetersPerSecond),
+            targetPos1.getX(),
+            targetPos1.getY(),
+            targetPos1.getZ(),
+            shooterAltitude.in(Radians));
 
-    double theta0 = (solution0.azimuth.in(Radians) + Math.PI) % (2 * Math.PI) - Math.PI;
-    double theta1 = (solution1.azimuth.in(Radians) + Math.PI) % (2 * Math.PI) - Math.PI;
+    double theta0 = (solution0.azimuth + Math.PI) % (2 * Math.PI) - Math.PI;
+    double theta1 = (solution1.azimuth + Math.PI) % (2 * Math.PI) - Math.PI;
     Logger.recordOutput("computeOmega/theta_1", theta_1);
     Logger.recordOutput("computeOmega/theta0", theta0);
     Logger.recordOutput("computeOmega/theta1", theta1);
@@ -196,8 +210,6 @@ public class AlignCommands {
     // return omega_1 + Math.copySign(maxAngularAccel, deltaTheta) * deltaT.in(Seconds);
   }
 
-  static FixedTrajectorySolution lastSolution = null;
-
   static ProfiledPIDController azimuthMovingPidTrap;
 
   public static Command moveShootCommand(
@@ -213,8 +225,6 @@ public class AlignCommands {
     try {
       return Commands.runOnce(
               () -> {
-                lastSolution = null;
-
                 azimuthMovingPidTrap =
                     new ProfiledPIDController(
                         kPtheta.getAsDouble(),
@@ -222,7 +232,7 @@ public class AlignCommands {
                         kDtheta.getAsDouble(),
                         new TrapezoidProfile.Constraints(3, 13));
                 azimuthMovingPidTrap.enableContinuousInput(-Math.PI, Math.PI);
-                azimuthMovingPidTrap.setTolerance(0.001);
+                azimuthMovingPidTrap.setTolerance(0.001, 0.01);
                 azimuthMovingPidTrap.reset(
                     new TrapezoidProfile.State(
                         drive.getRotation().getRadians(),
@@ -249,11 +259,12 @@ public class AlignCommands {
               Commands.runEnd(
                   () -> {
                     Threads.setCurrentThreadPriority(true, 80);
+                    var shooterPos = calcShooterPos(drive.getPose());
                     double xPosFuture =
-                        drive.getPose().getX()
+                        shooterPos.getX()
                             + integrate(appliedVelX, deltaT.in(Seconds), numAdvanceVel);
                     double yPosFuture =
-                        drive.getPose().getY()
+                        shooterPos.getY()
                             + integrate(appliedVelY, deltaT.in(Seconds), numAdvanceVel);
                     double thetaFuture =
                         drive.getRotation().getRadians()
@@ -273,27 +284,24 @@ public class AlignCommands {
                     LinearVelocity velY = velYinputs.get(0);
 
                     double startSolve = HALUtil.getFPGATime();
+                    var targetFuture = calcTargetDisplacement(xPosFuture, yPosFuture);
                     TrajectorySolution solution =
-                        ProjectileTrajectoryUtils.AirResistanceSolver
-                            .newtonRhapsonSolveAirResistance(
-                                velX,
-                                velY,
-                                calcTargetDisplacement(xPosFuture, yPosFuture),
-                                shooterAltitude,
-                                lastSolution);
-                    lastSolution =
-                        new FixedTrajectorySolution(solution.azimuth, solution.shooterVelocity);
+                        nodesJNI.newtonRhapsonSolveAirResistance(
+                            velX.in(MetersPerSecond),
+                            velY.in(MetersPerSecond),
+                            targetFuture.getX(),
+                            targetFuture.getY(),
+                            targetFuture.getZ(),
+                            shooterAltitude.in(Radians));
                     double endSolve = HALUtil.getFPGATime();
                     Logger.recordOutput(
                         "moveShootCommand/Calculated/solveTimeMS",
                         (endSolve - startSolve) / 1000.0);
 
                     AngularVelocity shooterAngularVelocity =
-                        RadiansPerSecond.of(
-                            solution.shooterVelocity.in(MetersPerSecond) * kShooter.getAsDouble());
+                        RadiansPerSecond.of(solution.shooterVel * kShooter.getAsDouble());
                     Angle theta =
-                        Radians.of(
-                            (solution.azimuth.in(Radians) + Math.PI) % (2 * Math.PI) - Math.PI);
+                        Radians.of((solution.azimuth + Math.PI) % (2 * Math.PI) - Math.PI);
                     Logger.recordOutput("moveShootCommand/Calculated/theta", theta);
                     Angle azimuthDiff = Radians.of((theta.in(Radians) - thetaFuture));
                     if (azimuthDiff.in(Radians) > Math.PI) {
@@ -330,18 +338,12 @@ public class AlignCommands {
                     omega = computeOmega(drive, shooter, kShooter);
                     Logger.recordOutput("moveShootCommand/Applied/omega", omega);
 
-                    if (Constants.CURRENT_MODE == Constants.Mode.REAL) {
-                      drive.runVelocityDangerous(
-                          ChassisSpeeds.fromFieldRelativeSpeeds(
-                              velX.times(0.9158924782),
-                              velY.times(0.9158924782),
-                              RadiansPerSecond.of(omega),
-                              drive.getRotation()));
-                    } else {
-                      drive.runVelocityDangerous(
-                          ChassisSpeeds.fromFieldRelativeSpeeds(
-                              velX, velY, RadiansPerSecond.of(omega), drive.getRotation()));
-                    }
+                    var speedLinear =
+                        ChassisSpeeds.fromFieldRelativeSpeeds(
+                            velX, velY, RadiansPerSecond.of(omega), drive.getRotation());
+                    var speedRotation = new ChassisSpeeds(0, -omega * shooterOffset.getX(), omega);
+
+                    drive.runVelocityDangerous(speedLinear.plus(speedRotation));
 
                     appliedVelX.addFirst(velX.in(MetersPerSecond));
                     appliedVelY.addFirst(velY.in(MetersPerSecond));
@@ -353,31 +355,12 @@ public class AlignCommands {
                     appliedVelY.pollLast();
                     appliedOmega.pollLast();
 
-                    ChassisSpeeds realVel =
-                        ChassisSpeeds.fromRobotRelativeSpeeds(
-                            drive.getChassisSpeeds(),
-                            isFlipped
-                                ? drive.getRotation().plus(new Rotation2d(Math.PI))
-                                : drive.getRotation());
-                    var solutionShooter =
-                        ProjectileTrajectoryUtils.AirResistanceSolver
-                            .newtonRhapsonSolveAirResistance(
-                                MetersPerSecond.of(realVel.vxMetersPerSecond),
-                                MetersPerSecond.of(realVel.vyMetersPerSecond),
-                                calcTargetDisplacement(
-                                    drive.getPose().getX(), drive.getPose().getY()),
-                                shooterAltitude,
-                                lastSolution);
-
                     AngularVelocity shooterVel =
-                        RadiansPerSecond.of(
-                            solutionShooter.shooterVelocity.in(MetersPerSecond)
-                                * kShooter.getAsDouble());
+                        RadiansPerSecond.of(solution.shooterVel * kShooter.getAsDouble());
                     if (Constants.CURRENT_MODE == Constants.Mode.REAL) {
                       if (shooterVel.in(RadiansPerSecond) > 0
                           && shooterVel.in(RadiansPerSecond) < 500)
-                        shooter.setShooterVelocityAndAcceleration(
-                            shooterVel.times(1.0239429013), lastShooterVel.times(1.0239429013));
+                        shooter.setShooterVelocityAndAcceleration(shooterVel, lastShooterVel);
                     } else if (Constants.CURRENT_MODE == Constants.Mode.SIM) {
                       if (shooterVel.in(RadiansPerSecond) > 0
                           && shooterVel.in(RadiansPerSecond) < 500)
@@ -446,61 +429,85 @@ public class AlignCommands {
      *
      */
 
-    Distance error =
-        ProjectileTrajectoryUtils.minDistTrajectory(
-            MetersPerSecond.of(realVel.vxMetersPerSecond),
-            MetersPerSecond.of(realVel.vyMetersPerSecond),
-            hubLocation.minus(
-                shooterOffset.plus(
-                    new Translation3d(drive.getPose().getX(), drive.getPose().getY(), 0))),
-            shooterAltitude,
-            Radians.of(drive.getPose().getRotation().getRadians()),
-            MetersPerSecond.of(shooterVel.in(RadiansPerSecond) / kShooter.getAsDouble()));
+    // Distance error =
+    //     ProjectileTrajectoryUtils.minDistTrajectory(
+    //         MetersPerSecond.of(realVel.vxMetersPerSecond),
+    //         MetersPerSecond.of(realVel.vyMetersPerSecond),
+    //         hubLocation.minus(
+    //             shooterOffset.plus(
+    //                 new Translation3d(drive.getPose().getX(), drive.getPose().getY(), 0))),
+    //         shooterAltitude,
+    //         Radians.of(drive.getPose().getRotation().getRadians()),
+    //         MetersPerSecond.of(shooterVel.in(RadiansPerSecond) / kShooter.getAsDouble()));
 
-    Matrix<N2, N1> displacement =
-        ProjectileTrajectoryUtils.AirResistanceSolver.f_airResistance_RK4(
-            new Matrix<>(
-                Nat.N2(),
-                Nat.N1(),
-                new double[] {
-                  shooterVel.in(RadiansPerSecond) / kShooter.getAsDouble(),
-                  drive.getPose().getRotation().getRadians()
-                }),
-            realVel.vxMetersPerSecond,
-            realVel.vyMetersPerSecond,
-            hubLocation.getZ() - shooterOffset.getZ(),
-            shooterAltitude.in(Radians));
-    Translation3d target = calcTargetDisplacement(drive.getPose().getX(), drive.getPose().getY());
+    // Matrix<N2, N1> displacement =
+    //     ProjectileTrajectoryUtils.AirResistanceSolver.f_airResistance_RK4(
+    //         new Matrix<>(
+    //             Nat.N2(),
+    //             Nat.N1(),
+    //             new double[] {
+    //               shooterVel.in(RadiansPerSecond) / kShooter.getAsDouble(),
+    //               drive.getPose().getRotation().getRadians()
+    //             }),
+    //         realVel.vxMetersPerSecond,
+    //         realVel.vyMetersPerSecond,
+    //         hubLocation.getZ() - shooterOffset.getZ(),
+    //         shooterAltitude.in(Radians));
+    var shooterPos = calcShooterPos(drive.getPose());
+    Translation3d target = calcTargetDisplacement(shooterPos.getX(), shooterPos.getY());
     Logger.recordOutput(
         "eSim/shooterVel", shooterVel.in(RadiansPerSecond) / kShooter.getAsDouble());
-
-    error =
-        Meters.of(
-            Math.hypot(
-                target.getX() - displacement.get(0, 0), target.getY() - displacement.get(1, 0)));
-    Logger.recordOutput("moveShootCommand/Real/minDistTrajectory", error);
     var idealNow =
-        ProjectileTrajectoryUtils.AirResistanceSolver.newtonRhapsonSolveAirResistance(
-            MetersPerSecond.of(realVel.vxMetersPerSecond),
-            MetersPerSecond.of(realVel.vyMetersPerSecond),
-            hubLocation.minus(
-                shooterOffset.plus(
-                    new Translation3d(drive.getPose().getX(), drive.getPose().getY(), 0))),
-            shooterAltitude,
-            null);
+        nodesJNI.newtonRhapsonSolveAirResistance(
+            realVel.vxMetersPerSecond,
+            realVel.vyMetersPerSecond,
+            target.getX(),
+            target.getY(),
+            target.getZ(),
+            shooterAltitude.in(Radians));
 
     Logger.recordOutput("moveShootCommand/RealCalc/theta", idealNow.azimuth);
     Logger.recordOutput(
-        "moveShootCommand/RealCalc/shooterVel",
-        idealNow.shooterVelocity.in(MetersPerSecond) * kShooter.getAsDouble());
-    idealLast = new FixedTrajectorySolution(idealNow.azimuth, idealNow.shooterVelocity);
-  }
+        "moveShootCommand/RealCalc/shooterVel", idealNow.shooterVel * kShooter.getAsDouble());
 
-  static FixedTrajectorySolution idealLast = null;
+    double error =
+        nodesJNI.minDistTrajectory(
+            shooterVel.in(RadiansPerSecond) / kShooter.getAsDouble(),
+            drive.getRotation().getRadians(),
+            realVel.vxMetersPerSecond,
+            realVel.vyMetersPerSecond,
+            target.getX(),
+            target.getY(),
+            target.getZ(),
+            shooterAltitude.in(Radians));
+    Logger.recordOutput("moveShootCommand/Real/error", error);
+    double errorShooterVel =
+        nodesJNI.minDistTrajectory(
+            shooterVel.in(RadiansPerSecond) / kShooter.getAsDouble(),
+            idealNow.azimuth,
+            realVel.vxMetersPerSecond,
+            realVel.vyMetersPerSecond,
+            target.getX(),
+            target.getY(),
+            target.getZ(),
+            shooterAltitude.in(Radians));
+    Logger.recordOutput("moveShootCommand/Real/errorShooterVel", errorShooterVel);
+    double errorTheta =
+        nodesJNI.minDistTrajectory(
+            idealNow.shooterVel,
+            drive.getRotation().getRadians(),
+            realVel.vxMetersPerSecond,
+            realVel.vyMetersPerSecond,
+            target.getX(),
+            target.getY(),
+            target.getZ(),
+            shooterAltitude.in(Radians));
+    Logger.recordOutput("moveShootCommand/Real/errorTheta", errorTheta);
+  }
 
   //   Torque maxTorque = NewtonMeters.of(10);
   //   Force maxForce = Newtons.of(10);
-  static LinearAcceleration maxAcceleration = MetersPerSecondPerSecond.of(4);
+  static LinearAcceleration maxAcceleration = MetersPerSecondPerSecond.of(2);
 
   private static Pair<LinearVelocity, LinearVelocity> limitVelocityByAccel(
       Pair<LinearVelocity, LinearVelocity> velocity,

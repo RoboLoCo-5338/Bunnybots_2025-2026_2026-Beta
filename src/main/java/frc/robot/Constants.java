@@ -15,7 +15,7 @@ public class Constants {
   public static final Mode CURRENT_MODE = RobotBase.isReal() ? Mode.REAL : SIM_MODE;
   public static final Distance ROBOT_LENGTH = Inches.of(33.250000);
   public static final Distance FLOOR_TO_MECHANISM = Inches.of(8);
-  public static final boolean TUNING = false;
+  public static final boolean TUNING = true;
 
   public static final Distance FIELD_WIDTH = Meters.of(16.4592);
   public static final Distance FIELD_HEIGHT = Meters.of(8.2296);
