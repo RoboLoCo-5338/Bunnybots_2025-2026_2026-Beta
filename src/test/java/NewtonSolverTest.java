@@ -22,17 +22,18 @@ class NewtonSolverTest {
 
   @Test
   void testSolve() {
+    nodesJNI.configureParameters(0.75, 0.0072, 0.069, 1.225);
     for (int i = 0; i < 10; i++) {
       runSingleSolve();
     }
   }
 
   void runSingleSolve() {
-    double vX = Math.random() * 6 - 3;
-    double vY = Math.random() * 6 - 3;
+    double vX = Math.signum(Math.random() - 0.5) * (Math.random() * 6 - 3);
+    double vY = Math.signum(Math.random() - 0.5) * (Math.random() * 6 - 3);
 
-    double x = Math.random() * 4 + 3;
-    double y = Math.random() * 4 + 3;
+    double x = Math.signum(Math.random() - 0.5) * (Math.random() * 4 + 3);
+    double y = Math.signum(Math.random() - 0.5) * (Math.random() * 4 + 3);
 
     TrajectorySolution result =
         ProjectileTrajectoryUtils.AirResistanceSolver.newtonRhapsonSolveAirResistance(

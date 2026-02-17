@@ -225,6 +225,8 @@ public class AlignCommands {
     try {
       return Commands.runOnce(
               () -> {
+                nodesJNI.configureParameters(0.75, 0.0072, 0.069, 1.225);
+
                 azimuthMovingPidTrap =
                     new ProfiledPIDController(
                         kPtheta.getAsDouble(),
@@ -254,7 +256,9 @@ public class AlignCommands {
                   velXinputs.addLast(MetersPerSecond.of(0.0));
                   velYinputs.addLast(MetersPerSecond.of(0.0));
                 }
-              })
+              },
+              drive,
+              shooter)
           .andThen(
               Commands.runEnd(
                   () -> {
@@ -376,7 +380,9 @@ public class AlignCommands {
                   () -> {
                     drive.stop();
                     shooter.setShooterVelocity(RadiansPerSecond.of(0));
-                  }));
+                  },
+                  drive,
+                  shooter));
 
     } catch (Exception e) {
       DriverStation.reportError("moveShootCommand", e.getStackTrace());

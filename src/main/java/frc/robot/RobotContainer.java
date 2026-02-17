@@ -309,17 +309,17 @@ public class RobotContainer {
     // Create entries for Kp and Ki, with default values
     kPEntry =
         tuningTab
-            .add("Kp", 6.7) // Key "Kp", default 0.01
+            .add("Kp", 2.7) // Key "Kp", default 0.01
             .withWidget("NumberSlider") // Use a slider widget
             .getEntry();
     kIEntry =
         tuningTab
-            .add("Ki", 0.05) // Key "Ki", default 0.001
+            .add("Ki", 0.01) // Key "Ki", default 0.001
             .withWidget("NumberSlider")
             .getEntry();
     kDEntry =
         tuningTab
-            .add("Kd", 0.8) // Key "Kd", default 0.001
+            .add("Kd", 0.4) // Key "Kd", default 0.001
             .withWidget("NumberSlider")
             .getEntry();
     kShooterEntry = tuningTab.add("Kshooter", 29.5).withWidget("NumberSlider").getEntry();
@@ -417,7 +417,16 @@ public class RobotContainer {
 
   public void manualButtonBindings() {
     // drivetrain controls
-    // drive.setDefaultCommand();
+    drive.setDefaultCommand(
+        DriveCommands.joystickDrive(
+            drive,
+            () ->
+                -driverController.getLeftY()
+                    * Math.pow(Math.abs(driverController.getLeftY()), 1.2 - 1),
+            () ->
+                -driverController.getLeftX()
+                    * Math.pow(Math.abs(driverController.getLeftX()), 1.2 - 1),
+            () -> (0.5) * -driverController.getRightX()));
     driverController.y().onTrue(drive.resetGyro());
 
     driverController
@@ -429,17 +438,6 @@ public class RobotContainer {
                 () -> getDisplacementY(),
                 () -> getDisplacementZ()));
 
-    // driverController
-    //     .b()
-    //     .whileTrue(
-    //         AlignCommands.alignMoving(
-    //             drive,
-    //             shooter,
-    //             () -> getKshooter(),
-    //             () -> getDisplacementX(),
-    //             MetersPerSecond.of(3.0),
-    //             () -> -driverController.getLeftY(),
-    //             () -> -driverController.getLeftX()));
     driverController
         .b()
         .whileTrue(
@@ -453,19 +451,6 @@ public class RobotContainer {
                 () -> getKp(),
                 () -> getKi(),
                 () -> getKd()));
-
-    driverController
-        .rightTrigger()
-        .whileFalse(
-            DriveCommands.joystickDrive(
-                drive,
-                () ->
-                    -driverController.getLeftY()
-                        * Math.pow(Math.abs(driverController.getLeftY()), 1.2 - 1),
-                () ->
-                    -driverController.getLeftX()
-                        * Math.pow(Math.abs(driverController.getLeftX()), 1.2 - 1),
-                () -> (0.5) * -driverController.getRightX()));
 
     // driver indexer controls
     driverController
