@@ -187,14 +187,13 @@ public class ShooterIOSpark extends ShooterIO {
   }
 
   @Override
-  public void setShooterVelocityAndAcceleration(
-      AngularVelocity velocity, AngularVelocity lastVelocity) {
+  public void setShooterVelocityAndNext(AngularVelocity velocity, AngularVelocity nextVelocity) {
     shooterClosedLoopController.setSetpoint(
         velocity.in(RPM),
         ControlType.kVelocity,
         ClosedLoopSlot.kSlot0,
         feedforward.calculateWithVelocities(
-            lastVelocity.in(RadiansPerSecond), velocity.in(RadiansPerSecond)));
+            velocity.in(RadiansPerSecond), nextVelocity.in(RadiansPerSecond)));
   }
 
   public void follow(ShooterIOSpark leader, boolean inverted) {

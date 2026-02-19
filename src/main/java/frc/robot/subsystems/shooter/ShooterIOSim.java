@@ -6,6 +6,7 @@ import com.revrobotics.sim.SparkFlexSim;
 import com.revrobotics.sim.SparkRelativeEncoderSim;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.system.plant.LinearSystemId;
+import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.simulation.FlywheelSim;
 import frc.robot.sim.SimMechanism;
@@ -65,5 +66,12 @@ public class ShooterIOSim extends ShooterIOSpark implements SimMechanism {
   @Override
   public double[] getCurrents() {
     return new double[] {shooterPhysicsSim.getCurrentDrawAmps()};
+  }
+
+  @Override
+  public void setShooterVelocityAndNext(AngularVelocity velocity, AngularVelocity nextVelocity) {
+    velocity = velocity.times(1.02031); // Sim is off slightly
+    nextVelocity = nextVelocity.times(1.02031);
+    super.setShooterVelocityAndNext(velocity, nextVelocity);
   }
 }

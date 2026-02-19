@@ -90,10 +90,9 @@ public class Shooter extends SubsystemBase implements SysIdSubsystem {
     io2.setShooterVelocity(velocity.times(-1));
   }
 
-  public void setShooterVelocityAndAcceleration(
-      AngularVelocity velocity, AngularVelocity lastVelocity) {
-    io1.setShooterVelocityAndAcceleration(velocity, lastVelocity);
-    io2.setShooterVelocityAndAcceleration(velocity.times(-1), lastVelocity.times(-1));
+  public void setShooterVelocityAndNext(AngularVelocity velocity, AngularVelocity nextVelocity) {
+    io1.setShooterVelocityAndNext(velocity, nextVelocity);
+    io2.setShooterVelocityAndNext(velocity.times(-1), nextVelocity.times(-1));
   }
 
   public Command setShooterVelocityCommand(

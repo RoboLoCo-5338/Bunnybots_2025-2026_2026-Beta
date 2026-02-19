@@ -14,7 +14,6 @@
 package frc.robot;
 
 import static edu.wpi.first.units.Units.Inches;
-import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.RPM;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static edu.wpi.first.units.Units.Volts;
@@ -310,10 +309,9 @@ public class RobotContainer {
     driverController
         .b()
         .whileTrue(
-            AlignCommands.moveShootCommand(
+            new AlignCommands.MoveShootCommand(
                 drive,
                 shooter,
-                MetersPerSecond.of(1.0),
                 () -> -driverController.getLeftY(),
                 () -> -driverController.getLeftX()));
 
