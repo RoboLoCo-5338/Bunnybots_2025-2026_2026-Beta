@@ -40,144 +40,6 @@ import org.littletonrobotics.junction.Logger;
 public class AlignCommands {
   private static Time deltaT = Milliseconds.of(20);
 
-  public static void initializeTunables() {
-    initializeTurnPidEntries();
-    initializeKShooter();
-    initializeDisplacementEntries();
-    initializeTemporalDisplacements();
-    initializeLimits();
-  }
-
-  private static GenericEntry kPEntry;
-  private static GenericEntry kIEntry;
-  private static GenericEntry kDEntry;
-
-  public static void initializeTurnPidEntries() {
-    ShuffleboardTab tuningTab = Shuffleboard.getTab("AlignTurnPID");
-    kPEntry =
-        tuningTab
-            .add("Kp", 2.7) // Key "Kp", default 0.01
-            .withWidget("NumberSlider") // Use a slider widget
-            .getEntry();
-    kIEntry =
-        tuningTab
-            .add("Ki", 0.01) // Key "Ki", default 0.001
-            .withWidget("NumberSlider")
-            .getEntry();
-    kDEntry =
-        tuningTab
-            .add("Kd", 0.4) // Key "Kd", default 0.001
-            .withWidget("NumberSlider")
-            .getEntry();
-  }
-
-  public static double getKp() {
-    return kPEntry.getDouble(0.01);
-  }
-
-  public static double getKi() {
-    return kIEntry.getDouble(0.001);
-  }
-
-  public static double getKd() {
-    return kDEntry.getDouble(0.001);
-  }
-
-  private static GenericEntry kDisplacementXEntry;
-  private static GenericEntry kDisplacementYEntry;
-  private static GenericEntry kDisplacementZEntry;
-
-  public static void initializeDisplacementEntries() {
-    ShuffleboardTab tuningTab = Shuffleboard.getTab("HubDisplacement");
-    kDisplacementXEntry =
-        tuningTab
-            .add(
-                "displacementX",
-                Inches.of((16 + 22.2)).in(Meters)) // bumper is 16, width of hub is 44.4
-            .withWidget("NumberSlider")
-            .getEntry();
-    kDisplacementYEntry =
-        tuningTab
-            .add("displacementY", Inches.of(0).in(Meters))
-            .withWidget("NumberSlider")
-            .getEntry();
-    kDisplacementZEntry =
-        tuningTab
-            .add("displacementZ", Inches.of(72).in(Meters)) // hub is 72 inches tall
-            .withWidget("NumberSlider")
-            .getEntry();
-  }
-
-  public static double getDisplacementX() {
-    return kDisplacementXEntry.getDouble(Inches.of((16 + 22.2)).in(Meters));
-  }
-
-  public static double getDisplacementY() {
-    return kDisplacementYEntry.getDouble(Inches.of(0).in(Meters));
-  }
-
-  public static double getDisplacementZ() {
-    return kDisplacementZEntry.getDouble(Inches.of(72).in(Meters));
-  }
-
-  private static GenericEntry kShooterEntry;
-
-  public static void initializeKShooter() {
-    ShuffleboardTab tuningTab = Shuffleboard.getTab("AlignCommandsKShooter");
-    kShooterEntry = tuningTab.add("Kshooter", 29.5).withWidget("NumberSlider").getEntry();
-  }
-
-  public static double getKShooter() {
-    return kShooterEntry.getDouble(1);
-  }
-
-  private static GenericEntry inputsTemporalDisplacementEntry;
-  private static GenericEntry v_linearTemporalDisplacementEntry;
-  private static GenericEntry v_sTemporalDisplacementEntry;
-  private static GenericEntry omegaTemporalDisplacementEntry;
-
-  public static void initializeTemporalDisplacements() {
-    ShuffleboardTab tuningTab = Shuffleboard.getTab("TemporalDisplacements");
-    inputsTemporalDisplacementEntry =
-        tuningTab.add("input lag(ms)", 100).withWidget("NumberSlider").getEntry();
-    v_linearTemporalDisplacementEntry =
-        tuningTab.add("v_linear(ms)", 80).withWidget("NumberSlider").getEntry();
-    v_sTemporalDisplacementEntry =
-        tuningTab.add("v_s(ms)", 80).withWidget("NumberSlider").getEntry();
-    omegaTemporalDisplacementEntry =
-        tuningTab.add("omega(ms)", 140).withWidget("NumberSlider").getEntry();
-  }
-
-  public static int getNumLagInputs() {
-    return (int)
-        Math.round(inputsTemporalDisplacementEntry.getDouble(100) / deltaT.in(Milliseconds));
-  }
-
-  public static int getVLinearDisplacement() {
-    return (int)
-        Math.round(v_linearTemporalDisplacementEntry.getDouble(80) / deltaT.in(Milliseconds));
-  }
-
-  public static int getShooterVelDisplacement() {
-    return (int) Math.round(v_sTemporalDisplacementEntry.getDouble(80) / deltaT.in(Milliseconds));
-  }
-
-  public static int getOmegaDisplacement() {
-    return (int)
-        Math.round(omegaTemporalDisplacementEntry.getDouble(140) / deltaT.in(Milliseconds));
-  }
-
-  private static GenericEntry maxSpeedEntry;
-
-  public static void initializeLimits() {
-    ShuffleboardTab tuningTab = Shuffleboard.getTab("MoveShootLimits");
-    maxSpeedEntry = tuningTab.add("Max Speed", 2.0).withWidget("NumberSlider").getEntry();
-  }
-
-  public static LinearVelocity getMaxSpeed() {
-    return MetersPerSecond.of(maxSpeedEntry.getDouble(2.0));
-  }
-
   public static boolean isFlipped =
       DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red;
 
@@ -186,89 +48,6 @@ public class AlignCommands {
   private static final Translation3d shooterOffset =
       new Translation3d(-0.5, 0, Inches.of(16.081505).in(Meters));
   private static final Angle shooterAltitude = Degrees.of(50);
-
-  private static AngularVelocity lastOmega = RadiansPerSecond.of(0);
-
-  private static double deadzone(double input, double zone) {
-    if (Math.abs(input) < zone) {
-      return 0.0;
-    } else {
-      return input;
-    }
-  }
-
-  public static Command resetDisplacement(Drive drive) {
-    try {
-      return Commands.runOnce(
-          () -> {
-            Translation2d fieldPos = drive.getPose().getTranslation();
-            hubLocation =
-                new Translation3d(
-                    fieldPos.getX() + getDisplacementX(),
-                    fieldPos.getY() + getDisplacementY(),
-                    getDisplacementZ());
-          },
-          drive);
-    } catch (Exception e) {
-      DriverStation.reportError("Failed to create resetDisplacement command", e.getStackTrace());
-      return Commands
-          .none(); // catches exception in command creation during boot, prevents BOOT LOOP
-    }
-  }
-
-  public static Translation3d calcShooterPos(Pose2d pose) {
-    Translation3d currentShooter =
-        shooterOffset.rotateBy(
-            new Rotation3d(
-                Radians.of(0), Radians.of(0), Radians.of(pose.getRotation().getRadians())));
-    return currentShooter.plus(new Translation3d(pose.getX(), pose.getY(), 0));
-  }
-
-  public static Translation3d calcTargetDisplacement(double xPos, double yPos) {
-    return hubLocation.minus(new Translation3d(xPos, yPos, shooterOffset.getZ()));
-  }
-
-  static double integrateTrapezoid(LinkedList<Double> values, double dt, int t) {
-    double currentX = 0;
-    for (int i = 0; i < t; i++) {
-      double v_current = values.get(i);
-      double v_next = values.get(i + 1);
-
-      // Average velocity for this step * time
-      currentX += ((v_current + v_next) / 2.0) * dt;
-    }
-    return currentX;
-  }
-
-  static double integrate(LinkedList<Double> valuesPast, double dt, int t) {
-    double currentX = 0;
-    for (int i = 0; (i < t) && (i < valuesPast.size()); i++) {
-      // velocity for this step * time
-      currentX += valuesPast.get(i) * dt;
-    }
-    return currentX;
-  }
-
-  static double integrate(
-      LinkedList<Double> valuesPast, LinkedList<Double> valuesFuture, double dt, int t) {
-    double currentX = 0;
-    for (int i = 0; (i < t) && (i < valuesPast.size()); i++) {
-      // velocity for this step * time
-      currentX += valuesPast.get(i) * dt;
-    }
-    for (int i = 0; (i < t - valuesPast.size()) && (i < valuesFuture.size()); i++) {
-      currentX += valuesFuture.get(i) * dt;
-    }
-    return currentX;
-  }
-
-  static double getPastFuture(
-      LinkedList<Double> valuesPast, LinkedList<Double> valuesFuture, int t) {
-    if (t < valuesPast.size()) return valuesPast.get(t);
-    else return valuesFuture.get(t - valuesPast.size());
-  }
-
-  static ProfiledPIDController azimuthMovingPidTrap;
 
   public static class MoveShootCommand extends Command {
     private final Drive drive;
@@ -297,6 +76,8 @@ public class AlignCommands {
 
     LinkedList<Double> appliedVelX = new LinkedList<>();
     LinkedList<Double> appliedVelY = new LinkedList<>();
+    
+    ProfiledPIDController azimuthMovingPidTrap;
 
     @Override
     public void initialize() {
@@ -591,6 +372,14 @@ public class AlignCommands {
     return new Pair<>(vX, vY);
   }
 
+  private static double deadzone(double input, double zone) {
+    if (Math.abs(input) < zone) {
+      return 0.0;
+    } else {
+      return input;
+    }
+  }
+
   private static Pair<LinearVelocity, LinearVelocity> clampInputs(
       DoubleSupplier inputX, DoubleSupplier inputY, LinearVelocity maxSpeed) {
     double xIn = deadzone(inputX.getAsDouble(), 0.05);
@@ -608,5 +397,214 @@ public class AlignCommands {
     Logger.recordOutput("AlignCommands/vXin", vX);
     Logger.recordOutput("AlignCommands/vYin", vY);
     return new Pair<>(vX, vY);
+  }
+
+  public static Command resetDisplacement(Drive drive) {
+    try {
+      return Commands.runOnce(
+          () -> {
+            Translation2d fieldPos = drive.getPose().getTranslation();
+            hubLocation =
+                new Translation3d(
+                    fieldPos.getX() + getDisplacementX(),
+                    fieldPos.getY() + getDisplacementY(),
+                    getDisplacementZ());
+          },
+          drive);
+    } catch (Exception e) {
+      DriverStation.reportError("Failed to create resetDisplacement command", e.getStackTrace());
+      return Commands
+          .none(); // catches exception in command creation during boot, prevents BOOT LOOP
+    }
+  }
+
+  public static Translation3d calcShooterPos(Pose2d pose) {
+    Translation3d currentShooter =
+        shooterOffset.rotateBy(
+            new Rotation3d(
+                Radians.of(0), Radians.of(0), Radians.of(pose.getRotation().getRadians())));
+    return currentShooter.plus(new Translation3d(pose.getX(), pose.getY(), 0));
+  }
+
+  public static Translation3d calcTargetDisplacement(double xPos, double yPos) {
+    return hubLocation.minus(new Translation3d(xPos, yPos, shooterOffset.getZ()));
+  }
+
+  static double integrateTrapezoid(LinkedList<Double> values, double dt, int t) {
+    double currentX = 0;
+    for (int i = 0; i < t; i++) {
+      double v_current = values.get(i);
+      double v_next = values.get(i + 1);
+
+      // Average velocity for this step * time
+      currentX += ((v_current + v_next) / 2.0) * dt;
+    }
+    return currentX;
+  }
+
+  static double integrate(LinkedList<Double> valuesPast, double dt, int t) {
+    double currentX = 0;
+    for (int i = 0; (i < t) && (i < valuesPast.size()); i++) {
+      // velocity for this step * time
+      currentX += valuesPast.get(i) * dt;
+    }
+    return currentX;
+  }
+
+  static double integrate(
+      LinkedList<Double> valuesPast, LinkedList<Double> valuesFuture, double dt, int t) {
+    double currentX = 0;
+    for (int i = 0; (i < t) && (i < valuesPast.size()); i++) {
+      // velocity for this step * time
+      currentX += valuesPast.get(i) * dt;
+    }
+    for (int i = 0; (i < t - valuesPast.size()) && (i < valuesFuture.size()); i++) {
+      currentX += valuesFuture.get(i) * dt;
+    }
+    return currentX;
+  }
+
+  static double getPastFuture(
+      LinkedList<Double> valuesPast, LinkedList<Double> valuesFuture, int t) {
+    if (t < valuesPast.size()) return valuesPast.get(t);
+    else return valuesFuture.get(t - valuesPast.size());
+  }
+
+  public static void initializeTunables() {
+    initializeTurnPidEntries();
+    initializeKShooter();
+    initializeDisplacementEntries();
+    initializeTemporalDisplacements();
+    initializeLimits();
+  }
+
+  private static GenericEntry kPEntry;
+  private static GenericEntry kIEntry;
+  private static GenericEntry kDEntry;
+
+  public static void initializeTurnPidEntries() {
+    ShuffleboardTab tuningTab = Shuffleboard.getTab("AlignTurnPID");
+    kPEntry =
+        tuningTab
+            .add("Kp", 2.7) // Key "Kp", default 0.01
+            .withWidget("NumberSlider") // Use a slider widget
+            .getEntry();
+    kIEntry =
+        tuningTab
+            .add("Ki", 0.01) // Key "Ki", default 0.001
+            .withWidget("NumberSlider")
+            .getEntry();
+    kDEntry =
+        tuningTab
+            .add("Kd", 0.4) // Key "Kd", default 0.001
+            .withWidget("NumberSlider")
+            .getEntry();
+  }
+
+  public static double getKp() {
+    return kPEntry.getDouble(0.01);
+  }
+
+  public static double getKi() {
+    return kIEntry.getDouble(0.001);
+  }
+
+  public static double getKd() {
+    return kDEntry.getDouble(0.001);
+  }
+
+  private static GenericEntry kDisplacementXEntry;
+  private static GenericEntry kDisplacementYEntry;
+  private static GenericEntry kDisplacementZEntry;
+
+  public static void initializeDisplacementEntries() {
+    ShuffleboardTab tuningTab = Shuffleboard.getTab("HubDisplacement");
+    kDisplacementXEntry =
+        tuningTab
+            .add(
+                "displacementX",
+                Inches.of((16 + 22.2)).in(Meters)) // bumper is 16, width of hub is 44.4
+            .withWidget("NumberSlider")
+            .getEntry();
+    kDisplacementYEntry =
+        tuningTab
+            .add("displacementY", Inches.of(0).in(Meters))
+            .withWidget("NumberSlider")
+            .getEntry();
+    kDisplacementZEntry =
+        tuningTab
+            .add("displacementZ", Inches.of(72).in(Meters)) // hub is 72 inches tall
+            .withWidget("NumberSlider")
+            .getEntry();
+  }
+
+  public static double getDisplacementX() {
+    return kDisplacementXEntry.getDouble(Inches.of((16 + 22.2)).in(Meters));
+  }
+
+  public static double getDisplacementY() {
+    return kDisplacementYEntry.getDouble(Inches.of(0).in(Meters));
+  }
+
+  public static double getDisplacementZ() {
+    return kDisplacementZEntry.getDouble(Inches.of(72).in(Meters));
+  }
+
+  private static GenericEntry kShooterEntry;
+
+  public static void initializeKShooter() {
+    ShuffleboardTab tuningTab = Shuffleboard.getTab("AlignCommandsKShooter");
+    kShooterEntry = tuningTab.add("Kshooter", 29.5).withWidget("NumberSlider").getEntry();
+  }
+
+  public static double getKShooter() {
+    return kShooterEntry.getDouble(1);
+  }
+
+  private static GenericEntry inputsTemporalDisplacementEntry;
+  private static GenericEntry v_linearTemporalDisplacementEntry;
+  private static GenericEntry v_sTemporalDisplacementEntry;
+  private static GenericEntry omegaTemporalDisplacementEntry;
+
+  public static void initializeTemporalDisplacements() {
+    ShuffleboardTab tuningTab = Shuffleboard.getTab("TemporalDisplacements");
+    inputsTemporalDisplacementEntry =
+        tuningTab.add("input lag(ms)", 100).withWidget("NumberSlider").getEntry();
+    v_linearTemporalDisplacementEntry =
+        tuningTab.add("v_linear(ms)", 80).withWidget("NumberSlider").getEntry();
+    v_sTemporalDisplacementEntry =
+        tuningTab.add("v_s(ms)", 80).withWidget("NumberSlider").getEntry();
+    omegaTemporalDisplacementEntry =
+        tuningTab.add("omega(ms)", 140).withWidget("NumberSlider").getEntry();
+  }
+
+  public static int getNumLagInputs() {
+    return (int)
+        Math.round(inputsTemporalDisplacementEntry.getDouble(100) / deltaT.in(Milliseconds));
+  }
+
+  public static int getVLinearDisplacement() {
+    return (int)
+        Math.round(v_linearTemporalDisplacementEntry.getDouble(80) / deltaT.in(Milliseconds));
+  }
+
+  public static int getShooterVelDisplacement() {
+    return (int) Math.round(v_sTemporalDisplacementEntry.getDouble(80) / deltaT.in(Milliseconds));
+  }
+
+  public static int getOmegaDisplacement() {
+    return (int)
+        Math.round(omegaTemporalDisplacementEntry.getDouble(140) / deltaT.in(Milliseconds));
+  }
+
+  private static GenericEntry maxSpeedEntry;
+
+  public static void initializeLimits() {
+    ShuffleboardTab tuningTab = Shuffleboard.getTab("MoveShootLimits");
+    maxSpeedEntry = tuningTab.add("Max Speed", 2.0).withWidget("NumberSlider").getEntry();
+  }
+
+  public static LinearVelocity getMaxSpeed() {
+    return MetersPerSecond.of(maxSpeedEntry.getDouble(2.0));
   }
 }
